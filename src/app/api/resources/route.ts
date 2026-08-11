@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, schema } from "@/db";
 
 export const dynamic = "force-dynamic";
 
@@ -8,22 +8,21 @@ export async function GET(req: Request) {
   const level = searchParams.get("level");
   const topic = searchParams.get("topic");
 
-  const where: { level?: string; topic?: string } = {};
-  if (level && ["N5", "N4", "N3", "all"].includes(level)) where.level = level;
-  if (topic) where.topic = topic;
+  let rows = await db.select().from(schema.resource);
+  if (level && ["N5", "N4", "N3", "all"].includes(level)) {
+    rows = rows.filter((r) => r.level === level);
+  }
+  if (topic) {
+    rows = rows.filter((r) => r.topic === topic);
+  }
+  rows.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-  const items = await db.resource.findMany({
-    where,
-    orderBy: [{ order: "asc" }],
-  });
-
-  // Distinct topics
-  const all = await db.resource.findMany({ select: { topic: true } });
+  const all = await db.select({ topic: schema.resource.topic }).from(schema.resource);
   const topicCounts: Record<string, number> = {};
   for (const r of all) topicCounts[r.topic] = (topicCounts[r.topic] ?? 0) + 1;
 
   return NextResponse.json({
-    items,
+    items: rows,
     topics: Object.entries(topicCounts).map(([name, count]) => ({ name, count })),
   });
 }

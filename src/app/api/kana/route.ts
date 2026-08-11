@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, schema } from "@/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type"); // "hiragana" | "katakana"
-  const row = searchParams.get("row"); // "vowels" | "k" | "s" | "t" | "n" | "h" | "m" | "y" | "r" | "w" | "n-solo" | "dakuten" | "handakuten" | "yoon"
-  const where: { type?: string; row?: string } = {};
-  if (type && (type === "hiragana" || type === "katakana")) where.type = type;
-  if (row) where.row = row;
+  const row = searchParams.get("row");
 
-  const rows = await db.kana.findMany({
-    where,
-    orderBy: [{ order: "asc" }, { type: "asc" }],
-  });
+  let rows = await db.select().from(schema.kana);
+  if (type && (type === "hiragana" || type === "katakana")) {
+    rows = rows.filter((k) => k.type === type);
+  }
+  if (row) {
+    rows = rows.filter((k) => k.row === row);
+  }
+  rows.sort((a, b) => a.order - b.order || a.type.localeCompare(b.type));
 
   // Group by row for display
   const byRow: Record<string, typeof rows> = {};
@@ -22,8 +23,6 @@ export async function GET(req: Request) {
     if (!byRow[k.row]) byRow[k.row] = [];
     byRow[k.row].push(k);
   }
-
-  // List of all distinct rows in display order
   const rowOrder = ["vowels", "k", "s", "t", "n", "h", "m", "y", "r", "w", "n-solo", "dakuten", "handakuten", "yoon"];
   const rowsOrdered = rowOrder.filter((r) => byRow[r]).map((r) => ({ row: r, items: byRow[r] }));
 

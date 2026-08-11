@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, schema } from "@/db";
+import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [streakStat, totalStat, activity] = await Promise.all([
-    db.stats.findUnique({ where: { key: "streak" } }),
-    db.stats.findUnique({ where: { key: "totalReviewed" } }),
-    db.dailyActivity.findMany({ orderBy: { date: "desc" }, take: 30 }),
-  ]);
+  const streakRows = await db.select().from(schema.stats).where(eq(schema.stats.key, "streak"));
+  const totalRows = await db.select().from(schema.stats).where(eq(schema.stats.key, "totalReviewed"));
+  const activity = await db.select().from(schema.dailyActivity);
   return NextResponse.json({
-    streak: streakStat?.value ?? 0,
-    totalReviewed: totalStat?.value ?? 0,
+    streak: streakRows[0]?.value ?? 0,
+    totalReviewed: totalRows[0]?.value ?? 0,
     activity,
   });
 }

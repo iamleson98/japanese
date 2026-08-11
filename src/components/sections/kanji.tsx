@@ -27,6 +27,7 @@ type Kanji = {
   jlpt: string;
   radical: string | null;
   mnemonic: string | null;
+  set: number | null;
   exampleWord: string | null;
   exampleRead: string | null;
   exampleMean: string | null;
@@ -35,7 +36,8 @@ type Kanji = {
 
 export function KanjiSection() {
   const [level, setLevel] = React.useState("N5");
-  const [items, setItems] = React.useState<Kanji[]>([]);
+  const [activeSet, setActiveSet] = React.useState<number>(1);
+  const [allItems, setAllItems] = React.useState<Kanji[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [added, setAdded] = React.useState<Set<string>>(new Set());
   const [selected, setSelected] = React.useState<Kanji | null>(null);
@@ -43,11 +45,28 @@ export function KanjiSection() {
 
   React.useEffect(() => {
     setLoading(true);
+    setActiveSet(1);
     fetch(`/api/kanji?level=${level}`)
       .then((r) => r.json())
-      .then((d) => setItems(d.items ?? []))
+      .then((d) => setAllItems(d.items ?? []))
       .finally(() => setLoading(false));
   }, [level]);
+
+  // Compute sets (10 per set) from the fetched items
+  const sets = React.useMemo(() => {
+    const map: Record<number, Kanji[]> = {};
+    for (const k of allItems) {
+      const s = k.set ?? Math.floor(((k.order ?? 0) - 1) / 10) + 1;
+      if (!map[s]) map[s] = [];
+      map[s].push(k);
+    }
+    return Object.entries(map)
+      .map(([setNum, items]) => ({ set: Number(setNum), items }))
+      .sort((a, b) => a.set - b.set);
+  }, [allItems]);
+
+  const items = sets.find((s) => s.set === activeSet)?.items ?? [];
+  const totalSets = sets.length;
 
   // BUGFIX: Load actual deck membership from server
   React.useEffect(() => {
@@ -99,8 +118,29 @@ export function KanjiSection() {
         <LevelTabs value={level} onChange={setLevel} />
       </div>
 
+      {/* Set selector — smaller learning sessions of ~10 kanji */}
+      {totalSets > 1 && (
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground">Set:</span>
+          {sets.map((s) => (
+            <button
+              key={s.set}
+              onClick={() => setActiveSet(s.set)}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition tabular-nums",
+                activeSet === s.set
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              {s.set} · {s.items.length}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mb-3 text-sm text-muted-foreground">
-        {loading ? "Loading…" : `${items.length} kanji` + (added.size > 0 ? ` · ${added.size} in deck` : "")}
+        {loading ? "Loading…" : `${items.length} kanji in set ${activeSet}` + (added.size > 0 ? ` · ${added.size} in deck total` : "")}
       </div>
 
       {loading ? (
