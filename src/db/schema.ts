@@ -1,8 +1,10 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+const timestampString = (name: string) =>
+  timestamp(name, { withTimezone: true, mode: "string" });
 
 // Hiragana / Katakana characters (the kana syllabary)
-export const kana = sqliteTable("kana", {
+export const kana = pgTable("kana", {
   id: text("id").primaryKey(),
   char: text("char").notNull().unique(),
   romaji: text("romaji").notNull(),
@@ -14,7 +16,7 @@ export const kana = sqliteTable("kana", {
 });
 
 // Vocabulary words organised by JLPT level
-export const vocabulary = sqliteTable("vocabulary", {
+export const vocabulary = pgTable("vocabulary", {
   id: text("id").primaryKey(),
   word: text("word").notNull(),
   reading: text("reading").notNull(),
@@ -34,7 +36,7 @@ export const vocabulary = sqliteTable("vocabulary", {
 });
 
 // Grammar points — EXPANDED schema with rule, conjugation, usage, examples[], exercises[]
-export const grammar = sqliteTable("grammar", {
+export const grammar = pgTable("grammar", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   level: text("level").notNull(),
@@ -62,7 +64,7 @@ export const grammar = sqliteTable("grammar", {
 });
 
 // Kanji characters
-export const kanji = sqliteTable("kanji", {
+export const kanji = pgTable("kanji", {
   id: text("id").primaryKey(),
   character: text("character").notNull().unique(),
   onyomi: text("onyomi").notNull(),
@@ -82,7 +84,7 @@ export const kanji = sqliteTable("kanji", {
 });
 
 // Japanese counters (助数詞) with sound-change rules
-export const counter = sqliteTable("counter", {
+export const counter = pgTable("counter", {
   id: text("id").primaryKey(),
   kanji: text("kanji").notNull(),
   reading: text("reading").notNull(),
@@ -105,7 +107,7 @@ export const counter = sqliteTable("counter", {
 });
 
 // Verb / adjective conjugation paradigms
-export const conjugation = sqliteTable("conjugation", {
+export const conjugation = pgTable("conjugation", {
   id: text("id").primaryKey(),
   verb: text("verb").notNull(),
   reading: text("reading").notNull(),
@@ -127,7 +129,7 @@ export const conjugation = sqliteTable("conjugation", {
 });
 
 // Curated YouTube videos / channels / playlists
-export const resource = sqliteTable("resource", {
+export const resource = pgTable("resource", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   url: text("url").notNull(),
@@ -139,15 +141,15 @@ export const resource = sqliteTable("resource", {
 });
 
 // Flashcard SRS progress
-export const flashcardProgress = sqliteTable("flashcard_progress", {
+export const flashcardProgress = pgTable("flashcard_progress", {
   id: text("id").primaryKey(),
   itemType: text("itemType").notNull(),
   itemId: text("itemId").notNull(),
   box: integer("box").default(0).notNull(),
   ease: integer("ease").default(250).notNull(), // stored as ease*100 to keep integer
   interval: integer("interval").default(0).notNull(),
-  dueAt: text("dueAt").notNull(), // ISO string
-  lastSeenAt: text("lastSeenAt"),
+  dueAt: timestampString("dueAt").notNull(),
+  lastSeenAt: timestampString("lastSeenAt"),
   reps: integer("reps").default(0).notNull(),
   lapses: integer("lapses").default(0).notNull(),
   correct: integer("correct").default(0).notNull(),
@@ -155,39 +157,39 @@ export const flashcardProgress = sqliteTable("flashcard_progress", {
 });
 
 // Daily streak / goals (key-value stats)
-export const stats = sqliteTable("stats", {
+export const stats = pgTable("stats", {
   id: text("id").primaryKey(),
   key: text("key").notNull().unique(),
   value: integer("value").default(0).notNull(),
-  updatedAt: text("updatedAt").notNull().default(sql`(datetime('now'))`),
+  updatedAt: timestampString("updatedAt").defaultNow().notNull(),
 });
 
 // Simple daily activity log (date -> cards reviewed)
-export const dailyActivity = sqliteTable("daily_activity", {
+export const dailyActivity = pgTable("daily_activity", {
   id: text("id").primaryKey(),
   date: text("date").notNull().unique(), // YYYY-MM-DD (local date)
   count: integer("count").default(0).notNull(),
-  updatedAt: text("updatedAt").notNull().default(sql`(datetime('now'))`),
+  updatedAt: timestampString("updatedAt").defaultNow().notNull(),
 });
 
 // Lesson progress tracking (which lessons the user has completed)
-export const lessonProgress = sqliteTable("lesson_progress", {
+export const lessonProgress = pgTable("lesson_progress", {
   id: text("id").primaryKey(),
   lessonId: integer("lessonId").notNull().unique(),
   // comma-separated checklist of completed steps: "grammar,vocab,kanji,examples,practice,review"
   completedSteps: text("completedSteps").default(""),
-  startedAt: text("startedAt").notNull().default(sql`(datetime('now'))`),
-  completedAt: text("completedAt"),
-  updatedAt: text("updatedAt").notNull().default(sql`(datetime('now'))`),
+  startedAt: timestampString("startedAt").defaultNow().notNull(),
+  completedAt: timestampString("completedAt"),
+  updatedAt: timestampString("updatedAt").defaultNow().notNull(),
 });
 
 // Grammar exercise attempt tracking
-export const exerciseProgress = sqliteTable("exercise_progress", {
+export const exerciseProgress = pgTable("exercise_progress", {
   id: text("id").primaryKey(),
   grammarId: text("grammarId").notNull(),
   exerciseIndex: integer("exerciseIndex").notNull(),
   correct: integer("correct").default(0).notNull(),
   attempts: integer("attempts").default(0).notNull(),
-  lastAttemptAt: text("lastAttemptAt"),
-  updatedAt: text("updatedAt").notNull().default(sql`(datetime('now'))`),
+  lastAttemptAt: timestampString("lastAttemptAt"),
+  updatedAt: timestampString("updatedAt").defaultNow().notNull(),
 });

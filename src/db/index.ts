@@ -1,19 +1,21 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
-// better-sqlite3 is synchronous + works in Node runtime (Next.js dev server).
-// Much lighter than Prisma Client and avoids OOM issues.
-const DB_PATH = process.env.DATABASE_URL?.replace("file:", "") || "./db/custom.db";
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required for the PostgreSQL database connection.");
+}
 
 const globalForDb = globalThis as unknown as {
-  _db: ReturnType<typeof drizzle> | undefined;
+  _pool: Pool | undefined;
 };
 
-export const db =
-  globalForDb._db ??
-  drizzle(new Database(DB_PATH), { schema });
+const pool = globalForDb._pool ?? new Pool({ connectionString });
 
-if (process.env.NODE_ENV !== "production") globalForDb._db = db;
+if (process.env.NODE_ENV !== "production") globalForDb._pool = pool;
+
+export const db = drizzle(pool, { schema });
 
 export { schema };

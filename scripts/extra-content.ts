@@ -2,8 +2,6 @@
 // Adds: 48 N5 vocab, 12 grammar points, 24 kanji, 14 resources,
 //       20 counters, verb conjugation tables, mnemonics.
 
-import type { PrismaClient } from "@prisma/client";
-
 type Vocab = {
   word: string; reading: string; meaning: string; romaji?: string;
   level: "N5" | "N4" | "N3"; category: string; pos?: string;
