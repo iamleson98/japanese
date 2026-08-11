@@ -1,0 +1,117 @@
+// Prisma schema for the Nihongo Path Japanese learning app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Hiragana / Katakana characters (the kana syllabary)
+model Kana {
+  id        String  @id @default(cuid())
+  char      String  @unique // the kana character
+  romaji    String  // romanization (NOT unique: ぢ and じ both = "ji")
+  type      String  // "hiragana" | "katakana"
+  row      String  // gojuon row, e.g. "vowels", "k", "s", "t", "n"
+  order     Int    // display order
+  // companion: the same sound in the other script
+  pair      String? // e.g. hiragana あ pair is katakana ア
+  audio     String? // optional audio file path
+}
+
+/// Vocabulary words organised by JLPT level
+model Vocabulary {
+  id          String  @id @default(cuid())
+  word        String  // kanji form e.g. 食べる
+  reading     String  // kana reading e.g. たべる
+  meaning     String  // english meaning
+  romaji      String? // romanization
+  level       String  // "N5" | "N4" | "N3"
+  category    String  // "greetings","verbs","nouns","adjectives","adverbs","particles","family","food","numbers","time","counters","conjunctions"
+  pos         String? // part of speech: "verb","noun","i-adjective","na-adjective","adverb","particle","expression"
+  exampleJp   String? // example sentence (jp)
+  exampleEn   String? // example sentence (en)
+  order       Int    @default(0)
+}
+
+/// Grammar points
+model Grammar {
+  id           String  @id @default(cuid())
+  title        String  // short title e.g. "〜ます (masu form)"
+  level        String  // "N5" | "N4" | "N3"
+  structure    String  // pattern e.g. "V(ます stem) + ます"
+  meaning      String  // english meaning
+  explanation  String  // long explanation
+  exampleJp    String  // example sentence jp
+  exampleEn    String  // example sentence en
+  exampleJp2   String? // second example
+  exampleEn2   String? // second example
+  note         String? // usage notes / caution
+  order        Int     @default(0)
+}
+
+/// Kanji characters
+model Kanji {
+  id          String  @id @default(cuid())
+  character   String  @unique // the kanji
+  onyomi      String  // on-reading (kanji origin), comma separated
+  kunyomi     String  // kun-reading (native), comma separated
+  meaning     String  // english meaning
+  level       String  // "N5" | "N4" | "N3"
+  strokeCount Int     @default(0)
+  jlpt        String  @default("N5")
+  radical     String? // radical
+  exampleWord String? // common word using this kanji
+  exampleRead String? // reading of the example word
+  exampleMean String? // meaning of the example word
+  order       Int     @default(0)
+}
+
+/// Curated YouTube videos / channels / playlists
+model Resource {
+  id          String  @id @default(cuid())
+  title       String
+  url         String
+  type        String  // "video" | "playlist" | "channel"
+  level       String  // "N5" | "N4" | "N3" | "all"
+  topic       String  // "kana" | "grammar" | "vocabulary" | "kanji" | "listening" | "particles" | "reading"
+  description String
+  order       Int     @default(0)
+}
+
+/// Flashcard SRS progress (single shared learner profile)
+model FlashcardProgress {
+  id           String   @id @default(cuid())
+  itemType    String   // "vocabulary" | "kana" | "kanji" | "grammar"
+  itemId      String   // id of the underlying item
+  box         Int      @default(0) // Leitner box 0..5 (0 = new)
+  ease        Float    @default(2.5) // ease factor
+  interval    Int      @default(0) // days until next review
+  dueAt       DateTime @default(now())
+  lastSeenAt DateTime?
+  reps        Int      @default(0)
+  lapses      Int      @default(0)
+  correct     Int      @default(0)
+  wrong       Int      @default(0)
+
+  @@unique([itemType, itemId])
+}
+
+/// Daily streak / goals
+model Stats {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  value        Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+/// Simple daily activity log (date -> cards reviewed)
+model DailyActivity {
+  id        String   @id @default(cuid())
+  date      String   @unique // YYYY-MM-DD
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
