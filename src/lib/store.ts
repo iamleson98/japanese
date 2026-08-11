@@ -19,15 +19,6 @@ export type FuriganaMode = "always" | "hover" | "never";
 export type RomajiMode = "always" | "after-review" | "never";
 
 type AppState = {
-  section: SectionId;
-  setSection: (s: SectionId) => void;
-  // secondary state for flashcards routing
-  flashcardType: "vocabulary" | "kana" | "kanji" | "grammar";
-  flashcardLevel: string | null;
-  startReview: (
-    type: "vocabulary" | "kana" | "kanji" | "grammar",
-    level: string | null
-  ) => void;
   // User learning preferences (persisted to localStorage)
   furiganaMode: FuriganaMode;
   romajiMode: RomajiMode;
@@ -59,12 +50,6 @@ function savePrefs(p: Prefs) {
 }
 
 export const useApp = create<AppState>((set, get) => ({
-  section: "dashboard",
-  setSection: (s) => set({ section: s }),
-  flashcardType: "vocabulary",
-  flashcardLevel: null,
-  startReview: (type, level) =>
-    set({ flashcardType: type, flashcardLevel: level, section: "flashcards" }),
   furiganaMode: "always",
   romajiMode: "always",
   ttsRate: 0.9,

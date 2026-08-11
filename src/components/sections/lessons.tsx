@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   cn,
   Route,
@@ -21,9 +22,9 @@ import {
   Layers3,
 } from "@/components/app/imports";
 import { SectionHeader, EmptyState, LevelBadge } from "./_primitives";
-import { useApp } from "@/lib/store";
 import { speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
+import { getFlashcardsHref, getSectionHref } from "@/lib/routes";
 
 type LessonDef = {
   id: number;
@@ -56,8 +57,7 @@ const STEP_LABELS: Record<string, { label: string; jp: string; icon: any }> = {
 };
 
 export function LessonsSection() {
-  const setSection = useApp((s) => s.setSection);
-  const startReview = useApp((s) => s.startReview);
+  const router = useRouter();
   const [lessons, setLessons] = React.useState<LessonDef[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [openId, setOpenId] = React.useState<number | null>(null);
@@ -124,9 +124,9 @@ export function LessonsSection() {
         onClose={closeLesson}
         onMarkStep={markStep}
         onComplete={completeLesson}
-        onGoVocab={() => setSection("vocabulary")}
-        onGoKanji={() => setSection("kanji")}
-        onReview={(type, level) => startReview(type, level)}
+        onGoVocab={() => router.push(getSectionHref("vocabulary"))}
+        onGoKanji={() => router.push(getSectionHref("kanji"))}
+        onReview={(type, level) => router.push(getFlashcardsHref(type, level))}
       />
     );
   }
@@ -164,7 +164,7 @@ export function LessonsSection() {
                       key={lesson.id}
                       lesson={lesson}
                       onOpen={() => openLesson(lesson.id)}
-                      onReview={() => startReview("vocabulary", lesson.level)}
+                      onReview={() => router.push(getFlashcardsHref("vocabulary", lesson.level))}
                     />
                   ))}
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   cn,
   Flame,
@@ -22,10 +23,10 @@ import {
   ListChecks,
   Volume2,
 } from "@/components/app/imports";
-import { useApp } from "@/lib/store";
 import { SectionHeader, StatCard, LevelPathCard } from "./_primitives";
 import { LEVEL_DESC, speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
+import { getFlashcardsHref, getSectionHref } from "@/lib/routes";
 
 type Dash = {
   counts: { kana: number; vocabulary: number; grammar: number; kanji: number; counters: number; conjugations: number; resources: number };
@@ -34,8 +35,7 @@ type Dash = {
 };
 
 export function DashboardSection() {
-  const setSection = useApp((s) => s.setSection);
-  const startReview = useApp((s) => s.startReview);
+  const router = useRouter();
   const [data, setData] = React.useState<Dash | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -65,24 +65,24 @@ export function DashboardSection() {
       learned: learnedByLevel.N5 ?? 0,
       total: totalByLevel.N5 ?? 0,
       description: LEVEL_DESC.N5,
-      onStart: () => setSection("kana"),
-      onReview: () => startReview("vocabulary", "N5"),
+      onStart: () => router.push(getSectionHref("kana")),
+      onReview: () => router.push(getFlashcardsHref("vocabulary", "N5")),
     },
     {
       level: "N4" as const,
       learned: learnedByLevel.N4 ?? 0,
       total: totalByLevel.N4 ?? 0,
       description: LEVEL_DESC.N4,
-      onStart: () => setSection("grammar"),
-      onReview: () => startReview("vocabulary", "N4"),
+      onStart: () => router.push(getSectionHref("grammar")),
+      onReview: () => router.push(getFlashcardsHref("vocabulary", "N4")),
     },
     {
       level: "N3" as const,
       learned: learnedByLevel.N3 ?? 0,
       total: totalByLevel.N3 ?? 0,
       description: LEVEL_DESC.N3,
-      onStart: () => setSection("grammar"),
-      onReview: () => startReview("vocabulary", "N3"),
+      onStart: () => router.push(getSectionHref("grammar")),
+      onReview: () => router.push(getFlashcardsHref("vocabulary", "N3")),
     },
   ];
 
@@ -104,14 +104,14 @@ export function DashboardSection() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
-              onClick={() => setSection("kana")}
+              onClick={() => router.push(getSectionHref("kana"))}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 transition"
             >
               <Type className="h-4 w-4" />
               Start with Kana
             </button>
             <button
-              onClick={() => startReview("vocabulary", null)}
+              onClick={() => router.push(getFlashcardsHref("vocabulary", null))}
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold hover:bg-accent transition"
             >
               <Layers3 className="h-4 w-4" />
@@ -191,28 +191,28 @@ export function DashboardSection() {
             label="Lessons"
             jp="コース"
             desc="Guided study path N5→N3"
-            onClick={() => setSection("lessons")}
+            onClick={() => router.push(getSectionHref("lessons"))}
           />
           <QuickLink
             icon={ListChecks}
             label="Quiz"
             jp="クイズ"
             desc="Test yourself JLPT-style"
-            onClick={() => setSection("quiz")}
+            onClick={() => router.push(getSectionHref("quiz"))}
           />
           <QuickLink
             icon={Repeat}
             label="Conjugation"
             jp="活用"
             desc={`${data?.counts.conjugations ?? "—"} verb & adj paradigms`}
-            onClick={() => setSection("conjugations")}
+            onClick={() => router.push(getSectionHref("conjugations"))}
           />
           <QuickLink
             icon={Hash}
             label="Counters"
             jp="助数詞"
             desc={`${data?.counts.counters ?? "—"} counters with sound changes`}
-            onClick={() => setSection("counters")}
+            onClick={() => router.push(getSectionHref("counters"))}
           />
         </div>
       </section>
@@ -224,28 +224,28 @@ export function DashboardSection() {
           label="Kana chart"
           jp="仮名"
           desc="Hiragana & katakana with audio"
-          onClick={() => setSection("kana")}
+          onClick={() => router.push(getSectionHref("kana"))}
         />
         <QuickLink
           icon={BookOpen}
           label="Vocabulary"
           jp="単語"
           desc={`${data?.counts.vocabulary ?? "—"} words across N5–N3`}
-          onClick={() => setSection("vocabulary")}
+          onClick={() => router.push(getSectionHref("vocabulary"))}
         />
         <QuickLink
           icon={Languages}
           label="Grammar"
           jp="文法"
           desc={`${data?.counts.grammar ?? "—"} grammar points`}
-          onClick={() => setSection("grammar")}
+          onClick={() => router.push(getSectionHref("grammar"))}
         />
         <QuickLink
           icon={GraduationCap}
           label="Kanji"
           jp="漢字"
           desc={`${data?.counts.kanji ?? "—"} characters`}
-          onClick={() => setSection("kanji")}
+          onClick={() => router.push(getSectionHref("kanji"))}
         />
       </section>
     </div>

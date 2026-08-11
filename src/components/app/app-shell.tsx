@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useApp, type SectionId } from "@/lib/store";
 import { useTheme } from "@/components/theme-provider";
+import { getSectionHref } from "@/lib/routes";
 import {
   LayoutDashboard,
   Type,
@@ -38,9 +40,13 @@ const NAV: { id: SectionId; label: string; jp: string; icon: React.ElementType }
   { id: "resources", label: "Resources", jp: "動画", icon: Youtube },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const section = useApp((s) => s.section);
-  const setSection = useApp((s) => s.setSection);
+export function AppShell({
+  children,
+  section,
+}: {
+  children: React.ReactNode;
+  section: SectionId;
+}) {
   const { theme, setTheme } = useTheme();
   const [streak, setStreak] = React.useState(0);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -68,7 +74,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-background">
       <Header
         section={section}
-        setSection={setSection}
         theme={theme}
         setTheme={setTheme}
         streak={streak}
@@ -85,7 +90,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function Header({
   section,
-  setSection,
   theme,
   setTheme,
   streak,
@@ -93,7 +97,6 @@ function Header({
   setSettingsOpen,
 }: {
   section: SectionId;
-  setSection: (s: SectionId) => void;
   theme: string;
   setTheme: (t: "light" | "dark" | "system") => void;
   streak: number;
@@ -104,8 +107,8 @@ function Header({
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 items-center gap-3 overflow-hidden">
-          <button
-            onClick={() => setSection("dashboard")}
+          <Link
+            href={getSectionHref("dashboard")}
             className="flex items-center gap-2.5 group shrink-0"
             aria-label="Go to dashboard"
           >
@@ -116,7 +119,7 @@ function Header({
               <span className="font-semibold text-foreground tracking-tight">Nihongo Path</span>
               <span className="text-[11px] text-muted-foreground font-jp">日本語パス · N5→N3</span>
             </span>
-          </button>
+          </Link>
 
           {/* Desktop nav */}
           <div className="hidden lg:flex min-w-0 flex-1 ml-2">
@@ -125,7 +128,7 @@ function Header({
                 <NavButton
                   key={item.id}
                   active={section === item.id}
-                  onClick={() => setSection(item.id)}
+                  href={getSectionHref(item.id)}
                   icon={item.icon}
                   label={item.label}
                   jp={item.jp}
@@ -165,9 +168,9 @@ function Header({
         <div className="lg:hidden -mx-1 pb-2">
           <div className="np-scroll flex items-center gap-1.5 overflow-x-auto px-1">
             {NAV.map((item) => (
-              <button
+              <Link
                 key={item.id}
-                onClick={() => setSection(item.id)}
+                href={getSectionHref(item.id)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition",
                   section === item.id
@@ -177,7 +180,7 @@ function Header({
               >
                 <item.icon className="h-3.5 w-3.5" />
                 {item.label}
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -190,20 +193,20 @@ function Header({
 
 function NavButton({
   active,
-  onClick,
+  href,
   icon: Icon,
   label,
   jp,
 }: {
   active: boolean;
-  onClick: () => void;
+  href: string;
   icon: React.ElementType;
   label: string;
   jp: string;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <Link
+      href={href}
       className={cn(
         "relative inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition",
         active
@@ -221,7 +224,7 @@ function NavButton({
       >
         {jp}
       </span>
-    </button>
+    </Link>
   );
 }
 

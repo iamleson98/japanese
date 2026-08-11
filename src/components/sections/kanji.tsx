@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   cn,
   Plus,
@@ -13,7 +14,7 @@ import {
 import { Modal } from "@/components/app/modal";
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
-import { useApp } from "@/lib/store";
+import { getFlashcardsHref } from "@/lib/routes";
 import { toast } from "sonner";
 
 type Kanji = {
@@ -35,13 +36,13 @@ type Kanji = {
 };
 
 export function KanjiSection() {
+  const router = useRouter();
   const [level, setLevel] = React.useState("N5");
   const [activeSet, setActiveSet] = React.useState<number>(1);
   const [allItems, setAllItems] = React.useState<Kanji[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [added, setAdded] = React.useState<Set<string>>(new Set());
   const [selected, setSelected] = React.useState<Kanji | null>(null);
-  const startReview = useApp((s) => s.startReview);
 
   React.useEffect(() => {
     setLoading(true);
@@ -106,7 +107,7 @@ export function KanjiSection() {
         description="Browse kanji by JLPT level. Tap any character to see its readings, meanings, stroke count, radical, a mnemonic, and a common example word."
       >
         <button
-          onClick={() => startReview("kanji", level)}
+          onClick={() => router.push(getFlashcardsHref("kanji", level))}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition"
         >
           <Layers3 className="h-4 w-4" />

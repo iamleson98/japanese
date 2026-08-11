@@ -1,4 +1,20 @@
+import { loadEnvConfig } from "@next/env";
+
 const SSL_MODES_ALIASED_TO_VERIFY_FULL = new Set(["prefer", "require", "verify-ca"]);
+
+let envLoaded = false;
+
+function ensureDatabaseEnvLoaded() {
+  if (process.env.DATABASE_URL) {
+    envLoaded = true;
+    return;
+  }
+
+  if (!envLoaded) {
+    loadEnvConfig(process.cwd());
+    envLoaded = !!process.env.DATABASE_URL;
+  }
+}
 
 export function normalizePostgresConnectionString(connectionString: string): string {
   try {
@@ -18,6 +34,7 @@ export function normalizePostgresConnectionString(connectionString: string): str
 }
 
 export function getDatabaseUrl(): string {
+  ensureDatabaseEnvLoaded();
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {

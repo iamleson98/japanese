@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   cn,
   Layers3,
@@ -22,7 +23,7 @@ import {
 } from "@/components/app/imports";
 import { SectionHeader, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
-import { useApp } from "@/lib/store";
+import { getFlashcardsHref, getSectionHref, isFlashcardRouteType } from "@/lib/routes";
 
 type CardType = "vocabulary" | "kana" | "kanji" | "grammar";
 
@@ -48,6 +49,8 @@ type DueCard = {
   onyomi?: string;
   kunyomi?: string;
   exampleWord?: string | null;
+  exampleRead?: string | null;
+  exampleMean?: string | null;
   title?: string;
   structure?: string;
   explanation?: string;
@@ -59,13 +62,16 @@ type DueCard = {
 type Phase = "setup" | "review" | "done";
 
 export function FlashcardsSection() {
-  const storeType = useApp((s) => s.flashcardType);
-  const storeLevel = useApp((s) => s.flashcardLevel);
-  const setSection = useApp((s) => s.setSection);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const routeTypeParam = searchParams.get("type");
+  const routeType = isFlashcardRouteType(routeTypeParam) ? routeTypeParam : null;
+  const routeLevel = searchParams.get("level");
+  const effectiveLevel = routeType === "kana" ? "N5" : routeLevel ?? "N5";
 
   const [phase, setPhase] = React.useState<Phase>("setup");
-  const [type, setType] = React.useState<CardType>(storeType);
-  const [level, setLevel] = React.useState<string>(storeLevel ?? "N5");
+  const [type, setType] = React.useState<CardType>(routeType ?? "vocabulary");
+  const [level, setLevel] = React.useState<string>(effectiveLevel);
   const [session, setSession] = React.useState<DueCard[]>([]);
   const [results, setResults] = React.useState<{ correct: number; wrong: number; total: number }>({
     correct: 0,
@@ -73,7 +79,6 @@ export function FlashcardsSection() {
     total: 0,
   });
 
-  // Auto-start when arriving via startReview()
   const autoStarted = React.useRef(false);
   const startSession = React.useCallback(async (t: CardType, lvl: string) => {
     const levelParam = t === "kana" ? "" : `&level=${encodeURIComponent(lvl)}`;
@@ -102,21 +107,18 @@ export function FlashcardsSection() {
   }, []);
 
   React.useEffect(() => {
-    if (!autoStarted.current && storeType && storeLevel) {
-      autoStarted.current = true;
-      setType(storeType as CardType);
-      setLevel(storeLevel);
-      // kick off a session
-      startSession(storeType as CardType, storeLevel);
-    }
-  }, [storeType, storeLevel, startSession]);
+    setType(routeType ?? "vocabulary");
+    setLevel(effectiveLevel);
 
-  // If user navigates here directly (no auto-start), default to setup
-  React.useEffect(() => {
-    if (!autoStarted.current) {
+    if (routeType) {
+      autoStarted.current = true;
+      void startSession(routeType, effectiveLevel);
+    } else {
+      autoStarted.current = false;
       setPhase("setup");
+      setSession([]);
     }
-  }, []);
+  }, [effectiveLevel, routeType, startSession]);
 
   function finish(correct: number, wrong: number) {
     setResults((r) => ({ ...r, correct, wrong }));
@@ -127,7 +129,8 @@ export function FlashcardsSection() {
     setPhase("setup");
     setSession([]);
     autoStarted.current = false;
-  }, []);
+    router.push(getSectionHref("flashcards"));
+  }, [router]);
 
   if (phase === "review" && session.length > 0) {
     return (
@@ -151,7 +154,7 @@ export function FlashcardsSection() {
         total={results.total}
         onRestart={() => startSession(type, level)}
         onBack={reset}
-        onDashboard={() => setSection("dashboard")}
+        onDashboard={() => router.push(getSectionHref("dashboard"))}
       />
     );
   }
@@ -162,7 +165,10 @@ export function FlashcardsSection() {
       level={level}
       setType={setType}
       setLevel={setLevel}
-      onStart={() => startSession(type, level)}
+      onStart={() => {
+        router.push(getFlashcardsHref(type, type === "kana" ? null : level));
+        void startSession(type, level);
+      }}
       onResetProgress={async () => {
         try {
           await fetch("/api/flashcards", {

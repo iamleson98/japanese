@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   cn,
   Volume2,
@@ -14,7 +15,7 @@ import {
 import { Modal } from "@/components/app/modal";
 import { SectionHeader, EmptyState } from "./_primitives";
 import { ROW_LABEL, speakJapanese } from "@/lib/sections/shared";
-import { useApp } from "@/lib/store";
+import { getFlashcardsHref } from "@/lib/routes";
 
 type Kana = {
   id: string;
@@ -32,12 +33,12 @@ const BASE_ROWS = ["vowels", "k", "s", "t", "n", "h", "m", "y", "r", "w", "n-sol
 const ALL_ROWS = [...BASE_ROWS, "dakuten", "handakuten", "yoon"];
 
 export function KanaSection() {
+  const router = useRouter();
   const [type, setType] = React.useState<"hiragana" | "katakana">("hiragana");
   const [showAdvanced, setShowAdvanced] = React.useState(false);
   const [quizOpen, setQuizOpen] = React.useState(false);
   const [data, setData] = React.useState<RowGroup[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const startReview = useApp((s) => s.startReview);
 
   const load = React.useCallback((t: "hiragana" | "katakana") => {
     setLoading(true);
@@ -133,7 +134,7 @@ export function KanaSection() {
           </div>
         </div>
         <button
-          onClick={() => startReview("kana", null)}
+          onClick={() => router.push(getFlashcardsHref("kana", null))}
           className="ml-auto inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition"
         >
           <Layers3 className="h-4 w-4" />

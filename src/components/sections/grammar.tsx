@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   cn,
   Plus,
@@ -20,7 +21,7 @@ import {
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
-import { useApp } from "@/lib/store";
+import { getFlashcardsHref } from "@/lib/routes";
 import { toast } from "sonner";
 
 type Example = { jp: string; en: string; difficulty: "easy" | "medium" | "hard"; note?: string };
@@ -49,12 +50,12 @@ type Grammar = {
 };
 
 export function GrammarSection() {
+  const router = useRouter();
   const [level, setLevel] = React.useState("N5");
   const [items, setItems] = React.useState<Grammar[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [added, setAdded] = React.useState<Set<string>>(new Set());
   const [open, setOpen] = React.useState<string | null>(null);
-  const startReview = useApp((s) => s.startReview);
 
   React.useEffect(() => {
     setLoading(true);
@@ -103,7 +104,7 @@ export function GrammarSection() {
         description="Each grammar point includes a clear rule, conjugation patterns (with verb-group explanations for verb forms), usage notes, a common-mistake warning, 3 example sentences (easy → hard), and practice exercises you can do right here."
       >
         <button
-          onClick={() => startReview("grammar", level)}
+          onClick={() => router.push(getFlashcardsHref("grammar", level))}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition"
         >
           <Layers3 className="h-4 w-4" />

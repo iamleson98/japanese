@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   cn,
   Volume2,
@@ -15,6 +16,7 @@ import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives"
 import { speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
 import { useApp } from "@/lib/store";
+import { getFlashcardsHref } from "@/lib/routes";
 
 type Vocab = {
   id: string;
@@ -36,6 +38,7 @@ type Vocab = {
 };
 
 export function VocabularySection() {
+  const router = useRouter();
   const [level, setLevel] = React.useState("N5");
   const [category, setCategory] = React.useState<string>("all");
   const [query, setQuery] = React.useState("");
@@ -43,7 +46,6 @@ export function VocabularySection() {
   const [categories, setCategories] = React.useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [added, setAdded] = React.useState<Set<string>>(new Set());
-  const startReview = useApp((s) => s.startReview);
   const romajiMode = useApp((s) => s.romajiMode);
 
   // Load vocab for the level
@@ -139,7 +141,7 @@ export function VocabularySection() {
         description="Browse vocabulary by JLPT level and category. Add cards to your spaced-repetition deck, then review them in the Flashcards section. Furigana appears above kanji (toggle in Settings)."
       >
         <button
-          onClick={() => startReview("vocabulary", level)}
+          onClick={() => router.push(getFlashcardsHref("vocabulary", level))}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition"
         >
           <Layers3 className="h-4 w-4" />
