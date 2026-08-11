@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://jisho.org",
+    "name": "Jisho.org: Japanese Dictionary",
+    "snippet": "Powerful and easy-to-use online Japanese dictionary with words, kanji and example sentences.",
+    "host_name": "jisho.org",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://play.google.com/store/apps/details?id=wtf.boomy.jishox&hl=en_US",
+    "name": "Jisho - Japanese Dictionary - Apps on Google Play",
+    "snippet": "Jisho brings one of the best Japanese-English dictionaries straight to your Android device - clean, fast, and ad-free.",
+    "host_name": "play.google.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/LearnJapanese/comments/mteojo/is_jishoorg_a_good_website_to_learn_words_in",
+    "name": "Is Jisho.org a good website to learn words in Japanese?",
+    "snippet": "Hello I feel like that jisho.org is somewhat of a subjective website to use to learn words in Japanese and I just want to ask a question here if it is ...",
+    "host_name": "www.reddit.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apps.microsoft.com/detail/9wzdncrcst90?hl=en-US&gl=US",
+    "name": "Nihongo Jisho - Free download and install on Windows",
+    "snippet": "Nihongo Jisho (日本語辞書） Japanese - English dictionary . It uses offline database that contains around 170000 entries. Dictionary can be used without internet ... Read more",
+    "host_name": "apps.microsoft.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://play.google.com/store/apps/details?id=ric.Jsho&hl=en_US",
+    "name": "Jsho - Japanese Dictionary - Apps on Google Play",
+    "snippet": "Jsho is an English-Japanese dictionary that aims to be simple, lightweight, fast and accurate. No unnecessary splash screens and no need to download any ... Read more",
+    "host_name": "play.google.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]

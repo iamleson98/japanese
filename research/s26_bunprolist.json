@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://bunpro.jp",
+    "name": "Bunpro",
+    "snippet": "Study Japanese grammar using an interactive input-based SRS system. With tons of example sentences, audio, textbook paths and more!",
+    "host_name": "bunpro.jp",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/LearnJapanese/comments/u44fg7/opinions_on_bunpro_for_grammar",
+    "name": "Opinions on Bunpro for grammar : r/LearnJapanese",
+    "snippet": "Some people say it is the best way to learn japanese grammar , but others say it's just a review tool. The SRS aspect is amazing and is pretty ...",
+    "host_name": "www.reddit.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://play.google.com/store/apps/details?id=bunpro.jp.bunpro_srs&hl=en_US",
+    "name": "Bunpro Japanese SRS - Apps on Google Play",
+    "snippet": "Master Japanese with Bunpro ! Bunpro is a dynamic tool for learning Japanese that combines expert guidance with an engaging, learner-focused experience. Read more",
+    "host_name": "play.google.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.wanikani.com/t/do-you-recommend-bunpro-for-grammar/55781",
+    "name": "Do you recommend Bunpro for grammar?",
+    "snippet": "Feb 12, 2022 — Bunpro is oriented toward the JLPT , which is designed by the Japanese government as a tool for assessing the competence of foreigners in the ...",
+    "host_name": "community.wanikani.com",
+    "rank": 3,
+    "date": "Feb 12, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.tofugu.com/japanese-learning-resources-database/bunpro",
+    "name": "Bunpro Review",
+    "snippet": "Bunpro takes a similar approach to the WaniKani system of spaced repetition with typed answers. But instead of kanji, it teaches and reinforces grammar. Read more",
+    "host_name": "www.tofugu.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]

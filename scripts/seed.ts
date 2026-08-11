@@ -1,4 +1,12 @@
 import { db } from "@/lib/db";
+import {
+  EXTRA_VOCAB,
+  EXTRA_GRAMMAR,
+  EXTRA_KANJI,
+  COUNTERS,
+  CONJUGATIONS,
+  EXTRA_RESOURCES,
+} from "./extra-content";
 
 /**
  * Comprehensive seed for the Nihongo Path Japanese learning app.
@@ -156,7 +164,9 @@ const KATAKANA: KanaSeed[] = [
 type Vocab = {
   word: string; reading: string; meaning: string; romaji?: string;
   level: "N5" | "N4" | "N3"; category: string; pos?: string;
-  exampleJp?: string; exampleEn?: string; order?: number;
+  verbGroup?: string; pitchAccent?: string; lesson?: number;
+  exampleJp?: string; exampleEn?: string; exampleJp2?: string; exampleEn2?: string;
+  order?: number;
 };
 
 const VOCAB: Vocab[] = [
@@ -349,7 +359,8 @@ const VOCAB: Vocab[] = [
 type Grammar = {
   title: string; level: "N5" | "N4" | "N3"; structure: string; meaning: string;
   explanation: string; exampleJp: string; exampleEn: string;
-  exampleJp2?: string; exampleEn2?: string; note?: string; order?: number;
+  exampleJp2?: string; exampleEn2?: string; note?: string;
+  commonMistake?: string; lesson?: number; order?: number;
 };
 
 const GRAMMAR: Grammar[] = [
@@ -417,6 +428,7 @@ const GRAMMAR: Grammar[] = [
 type Kanji = {
   character: string; onyomi: string; kunyomi: string; meaning: string;
   level: "N5" | "N4" | "N3"; strokeCount: number; radical?: string;
+  mnemonic?: string;
   exampleWord?: string; exampleRead?: string; exampleMean?: string; order?: number;
 };
 
@@ -597,6 +609,8 @@ async function main() {
   await db.vocabulary.deleteMany();
   await db.grammar.deleteMany();
   await db.kanji.deleteMany();
+  await db.counter.deleteMany();
+  await db.conjugation.deleteMany();
   await db.resource.deleteMany();
   await db.flashcardProgress.deleteMany();
   await db.stats.deleteMany();
@@ -614,7 +628,8 @@ async function main() {
   console.log(`  ✓ ${allKana.length} kana seeded`);
 
   const seenVocab = new Set<string>();
-  for (const v of VOCAB) {
+  const allVocab: Vocab[] = [...VOCAB, ...EXTRA_VOCAB];
+  for (const v of allVocab) {
     const key = `${v.word}|${v.reading}|${v.level}`;
     if (seenVocab.has(key)) continue;
     seenVocab.add(key);
@@ -622,35 +637,47 @@ async function main() {
       data: {
         word: v.word, reading: v.reading, meaning: v.meaning, romaji: v.romaji ?? null,
         level: v.level, category: v.category, pos: v.pos ?? null,
+        verbGroup: v.verbGroup ?? null, pitchAccent: v.pitchAccent ?? null,
+        lesson: v.lesson ?? null,
         exampleJp: v.exampleJp ?? null, exampleEn: v.exampleEn ?? null,
+        exampleJp2: v.exampleJp2 ?? null, exampleEn2: v.exampleEn2 ?? null,
         order: v.order ?? 0,
       },
     });
   }
   console.log(`  ✓ ${seenVocab.size} vocabulary words seeded`);
 
-  for (const g of GRAMMAR) {
+  const allGrammar: Grammar[] = [...GRAMMAR, ...EXTRA_GRAMMAR];
+  let grammarCount = 0;
+  const seenGrammar = new Set<string>();
+  for (const g of allGrammar) {
+    if (seenGrammar.has(g.title)) continue;
+    seenGrammar.add(g.title);
     await db.grammar.create({
       data: {
         title: g.title, level: g.level, structure: g.structure, meaning: g.meaning,
         explanation: g.explanation, exampleJp: g.exampleJp, exampleEn: g.exampleEn,
         exampleJp2: g.exampleJp2 ?? null, exampleEn2: g.exampleEn2 ?? null,
-        note: g.note ?? null, order: g.order ?? 0,
+        note: g.note ?? null, commonMistake: g.commonMistake ?? null,
+        lesson: g.lesson ?? null, order: g.order ?? 0,
       },
     });
+    grammarCount++;
   }
-  console.log(`  ✓ ${GRAMMAR.length} grammar points seeded`);
+  console.log(`  ✓ ${grammarCount} grammar points seeded`);
 
+  const allKanji: Kanji[] = [...KANJI, ...EXTRA_KANJI];
   const seenKanji = new Set<string>();
   let kanjiCount = 0;
-  for (const k of KANJI) {
+  for (const k of allKanji) {
     if (seenKanji.has(k.character)) continue;
     seenKanji.add(k.character);
     await db.kanji.create({
       data: {
         character: k.character, onyomi: k.onyomi, kunyomi: k.kunyomi, meaning: k.meaning,
         level: k.level, strokeCount: k.strokeCount, jlpt: k.level,
-        radical: k.radical ?? null, exampleWord: k.exampleWord ?? null,
+        radical: k.radical ?? null, mnemonic: k.mnemonic ?? null,
+        exampleWord: k.exampleWord ?? null,
         exampleRead: k.exampleRead ?? null, exampleMean: k.exampleMean ?? null,
         order: k.order ?? 0,
       },
@@ -659,15 +686,50 @@ async function main() {
   }
   console.log(`  ✓ ${kanjiCount} kanji seeded`);
 
-  for (const r of RESOURCES) {
+  // Counters
+  for (const c of COUNTERS) {
+    await db.counter.create({
+      data: {
+        kanji: c.kanji, reading: c.reading, meaning: c.meaning, level: c.level,
+        one: c.one, two: c.two, three: c.three, four: c.four, five: c.five,
+        six: c.six, seven: c.seven, eight: c.eight, nine: c.nine, ten: c.ten,
+        exampleJp: c.exampleJp ?? null, exampleEn: c.exampleEn ?? null,
+        note: c.note ?? null, order: c.order,
+      },
+    });
+  }
+  console.log(`  ✓ ${COUNTERS.length} counters seeded`);
+
+  // Conjugations
+  for (const c of CONJUGATIONS) {
+    await db.conjugation.create({
+      data: {
+        verb: c.verb, reading: c.reading, group: c.group, level: c.level,
+        meaning: c.meaning, dict: c.dict, masu: c.masu, nai: c.nai, ta: c.ta, te: c.te,
+        potential: c.potential ?? null, passive: c.passive ?? null,
+        causative: c.causative ?? null, volitional: c.volitional ?? null,
+        conditional: c.conditional ?? null, imperative: c.imperative ?? null,
+        order: c.order,
+      },
+    });
+  }
+  console.log(`  ✓ ${CONJUGATIONS.length} conjugation tables seeded`);
+
+  const allResources: Resource[] = [...RESOURCES, ...EXTRA_RESOURCES];
+  const seenResource = new Set<string>();
+  let resourceCount = 0;
+  for (const r of allResources) {
+    if (seenResource.has(r.url)) continue;
+    seenResource.add(r.url);
     await db.resource.create({
       data: {
         title: r.title, url: r.url, type: r.type, level: r.level,
         topic: r.topic, description: r.description, order: r.order,
       },
     });
+    resourceCount++;
   }
-  console.log(`  ✓ ${RESOURCES.length} resources seeded`);
+  console.log(`  ✓ ${resourceCount} resources seeded`);
 
   await db.stats.create({ data: { key: "streak", value: 0 } });
   await db.stats.create({ data: { key: "totalReviewed", value: 0 } });

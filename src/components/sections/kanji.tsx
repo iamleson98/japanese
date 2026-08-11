@@ -9,7 +9,7 @@ import {
   Volume2,
   Layers3,
   X,
-  BookOpen,
+  Lightbulb,
 } from "@/components/app/imports";
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
@@ -26,6 +26,7 @@ type Kanji = {
   strokeCount: number;
   jlpt: string;
   radical: string | null;
+  mnemonic: string | null;
   exampleWord: string | null;
   exampleRead: string | null;
   exampleMean: string | null;
@@ -48,9 +49,16 @@ export function KanjiSection() {
       .finally(() => setLoading(false));
   }, [level]);
 
+  // BUGFIX: Load actual deck membership from server
   React.useEffect(() => {
-    setAdded(new Set());
-  }, [level]);
+    fetch("/api/flashcards/deck?type=kanji")
+      .then((r) => r.json())
+      .then((d) => {
+        const ids = (d.byType?.kanji ?? []) as string[];
+        setAdded(new Set(ids));
+      })
+      .catch(() => {});
+  }, []);
 
   async function addToDeck(k: Kanji) {
     if (added.has(k.id)) return;
@@ -76,7 +84,7 @@ export function KanjiSection() {
         eyebrow="Characters with meaning"
         title="Kanji"
         jp="漢字"
-        description="Browse kanji by JLPT level. Tap any character to see its readings, meanings, stroke count, radical, and a common example word."
+        description="Browse kanji by JLPT level. Tap any character to see its readings, meanings, stroke count, radical, a mnemonic, and a common example word."
       >
         <button
           onClick={() => startReview("kanji", level)}
@@ -92,7 +100,7 @@ export function KanjiSection() {
       </div>
 
       <div className="mb-3 text-sm text-muted-foreground">
-        {loading ? "Loading…" : `${items.length} kanji`}
+        {loading ? "Loading…" : `${items.length} kanji` + (added.size > 0 ? ` · ${added.size} in deck` : "")}
       </div>
 
       {loading ? (
@@ -232,8 +240,18 @@ function KanjiDetail({
             </div>
           </div>
 
+          {k.mnemonic && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 p-3 text-sm">
+              <Lightbulb className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-violet-700 dark:text-violet-300 mb-0.5">Mnemonic</p>
+                <p className="text-violet-900 dark:text-violet-200">{k.mnemonic}</p>
+              </div>
+            </div>
+          )}
+
           {k.exampleWord && (
-            <div className="mt-5 rounded-lg bg-muted/50 p-4">
+            <div className="mt-4 rounded-lg bg-muted/50 p-4">
               <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
                 Common word
               </div>

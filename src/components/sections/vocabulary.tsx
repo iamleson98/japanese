@@ -13,6 +13,7 @@ import {
 } from "@/components/app/imports";
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
+import { Furigana } from "@/components/app/furigana";
 import { useApp } from "@/lib/store";
 
 type Vocab = {
@@ -24,8 +25,13 @@ type Vocab = {
   level: string;
   category: string;
   pos: string | null;
+  verbGroup: string | null;
+  pitchAccent: string | null;
+  lesson: number | null;
   exampleJp: string | null;
   exampleEn: string | null;
+  exampleJp2: string | null;
+  exampleEn2: string | null;
   order: number;
 };
 
@@ -38,7 +44,9 @@ export function VocabularySection() {
   const [loading, setLoading] = React.useState(true);
   const [added, setAdded] = React.useState<Set<string>>(new Set());
   const startReview = useApp((s) => s.startReview);
+  const romajiMode = useApp((s) => s.romajiMode);
 
+  // Load vocab for the level
   React.useEffect(() => {
     setLoading(true);
     fetch(`/api/vocabulary?level=${level}`)
@@ -50,11 +58,20 @@ export function VocabularySection() {
       .finally(() => setLoading(false));
   }, [level]);
 
-  // Track which items are already in the deck
+  // BUGFIX: Load actual deck membership from server so "In deck" state is correct
+  // even after navigating away and back.
+  const loadDeck = React.useCallback(() => {
+    fetch("/api/flashcards/deck?type=vocabulary")
+      .then((r) => r.json())
+      .then((d) => {
+        const ids = (d.byType?.vocabulary ?? []) as string[];
+        setAdded(new Set(ids));
+      })
+      .catch(() => {});
+  }, []);
   React.useEffect(() => {
-    // Reset added set when level changes (will refresh below from server-less store)
-    setAdded(new Set());
-  }, [level]);
+    loadDeck();
+  }, [loadDeck]);
 
   const filtered = React.useMemo(() => {
     let out = items;
@@ -119,7 +136,7 @@ export function VocabularySection() {
         eyebrow="Words you'll actually use"
         title="Vocabulary"
         jp="単語"
-        description="Browse vocabulary by JLPT level and category. Add cards to your spaced-repetition deck, then review them in the Flashcards section."
+        description="Browse vocabulary by JLPT level and category. Add cards to your spaced-repetition deck, then review them in the Flashcards section. Furigana appears above kanji (toggle in Settings)."
       >
         <button
           onClick={() => startReview("vocabulary", level)}
@@ -130,7 +147,6 @@ export function VocabularySection() {
         </button>
       </SectionHeader>
 
-      {/* Filters */}
       <div className="mb-5 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <LevelTabs value={level} onChange={setLevel} />
@@ -145,7 +161,6 @@ export function VocabularySection() {
           </div>
         </div>
 
-        {/* Category chips */}
         <div className="np-scroll flex items-center gap-1.5 overflow-x-auto pb-1">
           <CategoryChip active={category === "all"} onClick={() => setCategory("all")} label="All" />
           {categories
@@ -161,10 +176,10 @@ export function VocabularySection() {
         </div>
       </div>
 
-      {/* Add all + count */}
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {loading ? "Loading…" : `${filtered.length} words`}
+          {added.size > 0 && <span className="ml-2">· {added.size} in deck</span>}
         </p>
         {filtered.length > 0 && (
           <button
@@ -188,7 +203,13 @@ export function VocabularySection() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((v) => (
-            <VocabCard key={v.id} v={v} added={added.has(v.id)} onAdd={() => addToDeck(v)} />
+            <VocabCard
+              key={v.id}
+              v={v}
+              added={added.has(v.id)}
+              onAdd={() => addToDeck(v)}
+              showRomaji={romajiMode !== "never"}
+            />
           ))}
         </div>
       )}
@@ -224,17 +245,20 @@ function VocabCard({
   v,
   added,
   onAdd,
+  showRomaji,
 }: {
   v: Vocab;
   added: boolean;
   onAdd: () => void;
+  showRomaji: boolean;
 }) {
+  const [showExample2, setShowExample2] = React.useState(false);
   return (
     <div className="group rounded-xl border border-border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition flex flex-col">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="font-jp text-2xl font-semibold leading-tight">{v.word}</span>
+            <Furigana text={v.word} reading={v.reading} className="text-2xl font-semibold leading-tight" />
             <button
               onClick={() => speakJapanese(v.word)}
               className="text-muted-foreground hover:text-primary transition"
@@ -243,7 +267,9 @@ function VocabCard({
               <Volume2 className="h-4 w-4" />
             </button>
           </div>
-          <div className="font-jp text-sm text-muted-foreground mt-0.5">{v.reading}</div>
+          {showRomaji && v.romaji && (
+            <div className="text-xs text-muted-foreground/70 italic mt-0.5">{v.romaji}</div>
+          )}
         </div>
         <LevelBadge level={v.level} />
       </div>
@@ -256,15 +282,49 @@ function VocabCard({
             {v.pos}
           </span>
         )}
+        {v.verbGroup && (
+          <span className="rounded bg-sky-50 dark:bg-sky-950/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-sky-700 dark:text-sky-300">
+            {v.verbGroup}
+          </span>
+        )}
         <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground capitalize">
           {v.category}
         </span>
+        {v.lesson && (
+          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary">
+            L{v.lesson}
+          </span>
+        )}
       </div>
 
       {v.exampleJp && (
         <div className="mt-3 rounded-lg bg-muted/50 p-2.5 text-sm">
-          <p className="font-jp text-foreground/90 leading-snug">{v.exampleJp}</p>
+          <div className="flex items-start gap-2">
+            <Furigana text={v.exampleJp} reading={v.reading} className="leading-snug flex-1" />
+            <button
+              onClick={() => speakJapanese(v.exampleJp!)}
+              className="text-muted-foreground hover:text-primary transition shrink-0"
+            >
+              <Volume2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
           {v.exampleEn && <p className="text-xs text-muted-foreground mt-1">{v.exampleEn}</p>}
+          {v.exampleJp2 && (
+            <button
+              onClick={() => setShowExample2((s) => !s)}
+              className="mt-1.5 text-[11px] text-primary hover:underline"
+            >
+              {showExample2 ? "− Hide" : "+ Another example"}
+            </button>
+          )}
+          {showExample2 && v.exampleJp2 && (
+            <div className="mt-1.5 pt-1.5 border-t border-border/50">
+              <div className="flex items-start gap-2">
+                <Furigana text={v.exampleJp2} reading={v.reading} className="leading-snug flex-1 text-xs" />
+              </div>
+              {v.exampleEn2 && <p className="text-xs text-muted-foreground mt-1">{v.exampleEn2}</p>}
+            </div>
+          )}
         </div>
       )}
 

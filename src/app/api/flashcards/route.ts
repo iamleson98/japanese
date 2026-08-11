@@ -60,7 +60,8 @@ function computeNext(p: {
 }
 
 async function bumpDailyActivity(count: number) {
-  const today = new Date().toISOString().slice(0, 10);
+  // Use LOCAL date (not UTC) so streak/activity aligns with the user's day.
+  const today = localDayKey(new Date());
   const existing = await db.dailyActivity.findUnique({ where: { date: today } });
   if (existing) {
     await db.dailyActivity.update({
@@ -70,31 +71,47 @@ async function bumpDailyActivity(count: number) {
   } else {
     await db.dailyActivity.create({ data: { date: today, count } });
   }
-  // Update streak: if there's an entry for yesterday, increment; if today's already counted, keep. Simplify: streak = consecutive days with activity > 0 in last N days.
+  // Recompute streak = consecutive days (ending today or yesterday) with activity > 0.
   const recent = await db.dailyActivity.findMany({
     orderBy: { date: "desc" },
     take: 60,
   });
-  let streak = 0;
-  const todayKey = today;
   const seen = new Set(recent.map((r) => r.date));
-  // Start from today or yesterday
-  const cursor = seen.has(todayKey) ? todayKey : dayKey(new Date(Date.now() - 86400000));
-  let d = new Date(cursor + "T00:00:00Z");
-  while (true) {
-    const key = d.toISOString().slice(0, 10);
-    if (seen.has(key)) {
-      streak += 1;
-      d = new Date(d.getTime() - 86400000);
-    } else break;
+  // Streak can start today OR yesterday (so breaking yesterday doesn't break today).
+  const todayKey = today;
+  const yesterdayKey = localDayKey(new Date(Date.now() - 86400000));
+  let streak = 0;
+  let cursorDate: string | null = seen.has(todayKey) ? todayKey : seen.has(yesterdayKey) ? yesterdayKey : null;
+  if (cursorDate) {
+    let d = parseLocalDate(cursorDate);
+    while (true) {
+      const key = localDayKey(d);
+      if (seen.has(key)) {
+        streak += 1;
+        d = new Date(d.getTime() - 86400000);
+      } else break;
+    }
   }
   const s = await db.stats.findUnique({ where: { key: "streak" } });
   if (s) await db.stats.update({ where: { key: "streak" }, data: { value: streak } });
   else await db.stats.create({ data: { key: "streak", value: streak } });
 }
 
+// Local YYYY-MM-DD (avoids UTC off-by-one in non-UTC timezones)
+function localDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseLocalDate(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
 function dayKey(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return localDayKey(d);
 }
 
 export async function GET(req: Request) {

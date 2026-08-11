@@ -14,16 +14,27 @@ import {
   Sun,
   Moon,
   Flame,
+  Settings,
+  Hash,
+  Repeat,
+  Route,
+  ListChecks,
   cn,
+  warmupSpeech,
+  speakJapanese,
 } from "@/components/app/imports";
 
 const NAV: { id: SectionId; label: string; jp: string; icon: React.ElementType }[] = [
-  { id: "dashboard", label: "Dashboard", jp: "ホーム", icon: LayoutDashboard },
+  { id: "dashboard", label: "Home", jp: "ホーム", icon: LayoutDashboard },
+  { id: "lessons", label: "Lessons", jp: "コース", icon: Route },
   { id: "kana", label: "Kana", jp: "仮名", icon: Type },
-  { id: "vocabulary", label: "Vocabulary", jp: "単語", icon: BookOpen },
+  { id: "vocabulary", label: "Vocab", jp: "単語", icon: BookOpen },
   { id: "grammar", label: "Grammar", jp: "文法", icon: Languages },
   { id: "kanji", label: "Kanji", jp: "漢字", icon: Layers },
+  { id: "conjugations", label: "Conjugation", jp: "活用", icon: Repeat },
+  { id: "counters", label: "Counters", jp: "助数詞", icon: Hash },
   { id: "flashcards", label: "Flashcards", jp: "復習", icon: Layers3 },
+  { id: "quiz", label: "Quiz", jp: "クイズ", icon: ListChecks },
   { id: "resources", label: "Resources", jp: "動画", icon: Youtube },
 ];
 
@@ -32,6 +43,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setSection = useApp((s) => s.setSection);
   const { theme, setTheme } = useTheme();
   const [streak, setStreak] = React.useState(0);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+  // Warm up TTS voices on mount
+  React.useEffect(() => {
+    warmupSpeech();
+  }, []);
 
   React.useEffect(() => {
     fetch("/api/stats")
@@ -55,6 +72,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         theme={theme}
         setTheme={setTheme}
         streak={streak}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
       />
       <main className="flex-1 w-full">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-6 sm:py-8">{children}</div>
@@ -70,18 +89,21 @@ function Header({
   theme,
   setTheme,
   streak,
+  settingsOpen,
+  setSettingsOpen,
 }: {
   section: SectionId;
   setSection: (s: SectionId) => void;
   theme: string;
   setTheme: (t: "light" | "dark" | "system") => void;
   streak: number;
+  settingsOpen: boolean;
+  setSettingsOpen: (b: boolean) => void;
 }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 items-center gap-3">
-          {/* Logo */}
           <button
             onClick={() => setSection("dashboard")}
             className="flex items-center gap-2.5 group shrink-0"
@@ -97,7 +119,7 @@ function Header({
           </button>
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1 ml-2">
+          <nav className="hidden lg:flex items-center gap-1 ml-2 flex-wrap">
             {NAV.map((item) => (
               <NavButton
                 key={item.id}
@@ -120,6 +142,13 @@ function Header({
                 <span>{streak}</span>
               </div>
             )}
+            <button
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="grid h-9 w-9 place-items-center rounded-lg border border-border hover:bg-accent transition"
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="grid h-9 w-9 place-items-center rounded-lg border border-border hover:bg-accent transition"
@@ -151,6 +180,8 @@ function Header({
           </div>
         </div>
       </div>
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </header>
   );
 }
@@ -172,7 +203,7 @@ function NavButton({
     <button
       onClick={onClick}
       className={cn(
-        "relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
+        "relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
           : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -182,13 +213,122 @@ function NavButton({
       <span>{label}</span>
       <span
         className={cn(
-          "font-jp text-[11px]",
+          "font-jp text-[10px] hidden xl:inline",
           active ? "text-primary-foreground/70" : "text-muted-foreground/70"
         )}
       >
         {jp}
       </span>
     </button>
+  );
+}
+
+function SettingsPanel({ onClose }: { onClose: () => void }) {
+  const furiganaMode = useApp((s) => s.furiganaMode);
+  const setFuriganaMode = useApp((s) => s.setFuriganaMode);
+  const romajiMode = useApp((s) => s.romajiMode);
+  const setRomajiMode = useApp((s) => s.setRomajiMode);
+  const ttsRate = useApp((s) => s.ttsRate);
+  const setTtsRate = useApp((s) => s.setTtsRate);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-30" onClick={onClose} />
+      <div className="absolute right-4 sm:right-6 top-16 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover shadow-lg np-fade-in">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm">Learning settings</h3>
+            <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+          </div>
+
+          <Setting label="Furigana (kanji readings)">
+            <Segmented
+              value={furiganaMode}
+              onChange={(v) => setFuriganaMode(v as any)}
+              options={[
+                { value: "always", label: "Always" },
+                { value: "hover", label: "Hover" },
+                { value: "never", label: "Off" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Hover mode hides readings until you mouse over — better for kanji recognition practice.
+            </p>
+          </Setting>
+
+          <Setting label="Romaji (romanization)">
+            <Segmented
+              value={romajiMode}
+              onChange={(v) => setRomajiMode(v as any)}
+              options={[
+                { value: "always", label: "Always" },
+                { value: "after-review", label: "After review" },
+                { value: "never", label: "Off" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Hide romaji to stop relying on it. "After review" shows romaji only on first encounter.
+            </p>
+          </Setting>
+
+          <Setting label="Audio speed">
+            <Segmented
+              value={String(ttsRate)}
+              onChange={(v) => setTtsRate(Number(v))}
+              options={[
+                { value: "0.7", label: "Slow" },
+                { value: "0.9", label: "Normal" },
+                { value: "1.0", label: "Native" },
+              ]}
+            />
+            <button
+              onClick={() => speakJapanese("こんにちは", ttsRate)}
+              className="mt-2 text-xs text-primary hover:underline"
+            >
+              Test audio ▶
+            </button>
+          </Setting>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Setting({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-4 last:mb-0">
+      <div className="text-xs font-medium mb-1.5">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function Segmented({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-lg bg-muted p-0.5 w-full">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={cn(
+            "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition",
+            value === opt.value
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -208,8 +348,7 @@ function Footer() {
             </span>
           </div>
           <p className="text-xs">
-            Learn Japanese from absolute beginner (N5) to intermediate (N3). Made with curated
-            YouTube resources &amp; spaced-repetition flashcards.
+            Learn Japanese from absolute beginner (N5) to intermediate (N3). Curated YouTube resources &amp; spaced-repetition flashcards.
           </p>
         </div>
       </div>

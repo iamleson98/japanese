@@ -16,14 +16,20 @@ import {
   Languages,
   Type,
   Calendar,
+  Hash,
+  Repeat,
+  Route,
+  ListChecks,
+  Volume2,
 } from "@/components/app/imports";
 import { useApp } from "@/lib/store";
 import { SectionHeader, StatCard, LevelPathCard } from "./_primitives";
-import { LEVEL_DESC } from "@/lib/sections/shared";
+import { LEVEL_DESC, speakJapanese } from "@/lib/sections/shared";
+import { Furigana } from "@/components/app/furigana";
 
 type Dash = {
-  counts: { kana: number; vocabulary: number; grammar: number; kanji: number; resources: number };
-  progress: { learned: number; due: number; totalReviewed: number; streak: number; byType: Record<string, number> };
+  counts: { kana: number; vocabulary: number; grammar: number; kanji: number; counters: number; conjugations: number; resources: number };
+  progress: { learned: number; due: number; totalReviewed: number; streak: number; byType: Record<string, number>; learnedByLevel: Record<string, number>; totalByLevel: Record<string, number> };
   activity: { date: string; count: number }[];
 };
 
@@ -50,27 +56,30 @@ export function DashboardSection() {
   const totalReviewed = data?.progress.totalReviewed ?? 0;
   const streak = data?.progress.streak ?? 0;
 
+  const learnedByLevel = data?.progress.learnedByLevel ?? { N5: 0, N4: 0, N3: 0 };
+  const totalByLevel = data?.progress.totalByLevel ?? { N5: 0, N4: 0, N3: 0 };
+
   const pathCards = [
     {
       level: "N5" as const,
-      learned: 0,
-      total: (data?.counts.vocabulary ?? 0),
+      learned: learnedByLevel.N5 ?? 0,
+      total: totalByLevel.N5 ?? 0,
       description: LEVEL_DESC.N5,
       onStart: () => setSection("kana"),
       onReview: () => startReview("vocabulary", "N5"),
     },
     {
       level: "N4" as const,
-      learned: 0,
-      total: (data?.counts.vocabulary ?? 0),
+      learned: learnedByLevel.N4 ?? 0,
+      total: totalByLevel.N4 ?? 0,
       description: LEVEL_DESC.N4,
       onStart: () => setSection("grammar"),
       onReview: () => startReview("vocabulary", "N4"),
     },
     {
       level: "N3" as const,
-      learned: 0,
-      total: (data?.counts.vocabulary ?? 0),
+      learned: learnedByLevel.N3 ?? 0,
+      total: totalByLevel.N3 ?? 0,
       description: LEVEL_DESC.N3,
       onStart: () => setSection("grammar"),
       onReview: () => startReview("vocabulary", "N3"),
@@ -173,7 +182,42 @@ export function DashboardSection() {
         </div>
       </section>
 
-      {/* Quick links */}
+      {/* Word of the day + Quick links */}
+      <section className="grid gap-4 lg:grid-cols-3 mb-8">
+        <WordOfDay />
+        <div className="lg:col-span-2 grid gap-4 sm:grid-cols-2">
+          <QuickLink
+            icon={Route}
+            label="Lessons"
+            jp="コース"
+            desc="Guided study path N5→N3"
+            onClick={() => setSection("lessons")}
+          />
+          <QuickLink
+            icon={ListChecks}
+            label="Quiz"
+            jp="クイズ"
+            desc="Test yourself JLPT-style"
+            onClick={() => setSection("quiz")}
+          />
+          <QuickLink
+            icon={Repeat}
+            label="Conjugation"
+            jp="活用"
+            desc={`${data?.counts.conjugations ?? "—"} verb & adj paradigms`}
+            onClick={() => setSection("conjugations")}
+          />
+          <QuickLink
+            icon={Hash}
+            label="Counters"
+            jp="助数詞"
+            desc={`${data?.counts.counters ?? "—"} counters with sound changes`}
+            onClick={() => setSection("counters")}
+          />
+        </div>
+      </section>
+
+      {/* More content */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <QuickLink
           icon={Type}
@@ -204,6 +248,48 @@ export function DashboardSection() {
           onClick={() => setSection("kanji")}
         />
       </section>
+    </div>
+  );
+}
+
+function WordOfDay() {
+  const [word, setWord] = React.useState<{
+    word: string; reading: string; meaning: string; exampleJp: string | null; exampleEn: string | null; level: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    fetch("/api/word-of-day")
+      .then((r) => r.json())
+      .then((d) => setWord(d.word ?? null))
+      .catch(() => {});
+  }, []);
+
+  if (!word) {
+    return <div className="rounded-xl border border-border bg-card p-4 animate-pulse h-40" />;
+  }
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-amber-50/30 dark:from-primary/10 dark:to-amber-950/20 p-5">
+      <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wide mb-3">
+        <Calendar className="h-3.5 w-3.5" />
+        Word of the day
+      </div>
+      <div className="flex items-baseline gap-2">
+        <Furigana text={word.word} reading={word.reading} className="text-3xl font-semibold" />
+        <button
+          onClick={() => speakJapanese(word.word)}
+          className="text-muted-foreground hover:text-primary transition"
+        >
+          <Volume2 className="h-4 w-4" />
+        </button>
+      </div>
+      <p className="mt-1 text-sm text-foreground/90">{word.meaning}</p>
+      {word.exampleJp && (
+        <div className="mt-3 text-sm">
+          <Furigana text={word.exampleJp} reading={word.reading} className="leading-snug" />
+          {word.exampleEn && <p className="text-xs text-muted-foreground mt-1">{word.exampleEn}</p>}
+        </div>
+      )}
     </div>
   );
 }

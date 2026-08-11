@@ -20,6 +20,10 @@ export { cn } from "@/lib/utils";
 // Sonner toast (modern, simple)
 export { toast } from "sonner";
 
+// Speech + furigana helpers
+export { speakJapanese, warmupSpeech, toFurigana } from "@/lib/sections/shared";
+export type { FuriganaSegment } from "@/lib/sections/shared";
+
 // Icons (re-export commonly used lucide icons)
 export {
   LayoutDashboard,
@@ -64,4 +68,13 @@ export {
   Heart,
   Star,
   Info,
+  Hash,
+  Settings,
+  Repeat,
+  ListChecks,
+  Route,
+  CalendarDays,
+  VolumeX,
+  Type as TypeIcon,
+  AlertCircle,
 } from "lucide-react";
