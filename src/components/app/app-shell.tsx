@@ -103,7 +103,7 @@ function Header({
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-        <div className="flex h-16 items-center gap-3">
+        <div className="flex h-16 items-center gap-3 overflow-hidden">
           <button
             onClick={() => setSection("dashboard")}
             className="flex items-center gap-2.5 group shrink-0"
@@ -119,20 +119,22 @@ function Header({
           </button>
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1 ml-2 flex-wrap">
-            {NAV.map((item) => (
-              <NavButton
-                key={item.id}
-                active={section === item.id}
-                onClick={() => setSection(item.id)}
-                icon={item.icon}
-                label={item.label}
-                jp={item.jp}
-              />
-            ))}
-          </nav>
+          <div className="hidden lg:flex min-w-0 flex-1 ml-2">
+            <nav className="np-scroll flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap pr-2">
+              {NAV.map((item) => (
+                <NavButton
+                  key={item.id}
+                  active={section === item.id}
+                  onClick={() => setSection(item.id)}
+                  icon={item.icon}
+                  label={item.label}
+                  jp={item.jp}
+                />
+              ))}
+            </nav>
+          </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {streak > 0 && (
               <div
                 className="hidden sm:flex items-center gap-1.5 rounded-full bg-orange-50 dark:bg-orange-950/40 px-3 py-1.5 text-sm font-medium text-orange-700 dark:text-orange-300 ring-1 ring-orange-200/60 dark:ring-orange-800/40"
@@ -203,7 +205,7 @@ function NavButton({
     <button
       onClick={onClick}
       className={cn(
-        "relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition",
+        "relative inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
           : "text-muted-foreground hover:text-foreground hover:bg-accent"
