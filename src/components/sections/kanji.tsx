@@ -8,9 +8,9 @@ import {
   GraduationCap,
   Volume2,
   Layers3,
-  X,
   Lightbulb,
 } from "@/components/app/imports";
+import { Modal } from "@/components/app/modal";
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { useApp } from "@/lib/store";
@@ -231,30 +231,18 @@ function KanjiDetail({
   onAdd: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div className="flex items-center gap-2">
-            <LevelBadge level={k.level} />
-            <span className="text-sm text-muted-foreground">{k.strokeCount} strokes</span>
-            {k.radical && (
-              <span className="text-sm text-muted-foreground">
-                · radical <span className="font-jp text-foreground">{k.radical}</span>
-              </span>
-            )}
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="h-5 w-5" />
-          </button>
+    <Modal open onClose={onClose} className="max-w-lg">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3 pr-12">
+        <div className="flex items-center gap-2">
+          <LevelBadge level={k.level} />
+          <span className="text-sm text-muted-foreground">{k.strokeCount} strokes</span>
+          {k.radical && (
+            <span className="text-sm text-muted-foreground">
+              · radical <span className="font-jp text-foreground">{k.radical}</span>
+            </span>
+          )}
         </div>
+      </div>
         <div className="p-6">
           <div className="flex items-start gap-5">
             <button
@@ -327,8 +315,7 @@ function KanjiDetail({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

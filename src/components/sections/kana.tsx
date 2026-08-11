@@ -11,6 +11,7 @@ import {
   Sparkles,
   Lightbulb,
 } from "@/components/app/imports";
+import { Modal } from "@/components/app/modal";
 import { SectionHeader, EmptyState } from "./_primitives";
 import { ROW_LABEL, speakJapanese } from "@/lib/sections/shared";
 import { useApp } from "@/lib/store";
@@ -267,21 +268,17 @@ function KanaQuiz({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-xl overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <div>
-            <h3 className="font-semibold">
-              {type === "hiragana" ? "Hiragana" : "Katakana"} Quiz
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Question {Math.min(idx + 1, pool.length)} / {pool.length}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="h-5 w-5" />
-          </button>
+    <Modal open onClose={onClose} className="max-w-lg">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3 pr-12">
+        <div>
+          <h3 className="font-semibold">
+            {type === "hiragana" ? "Hiragana" : "Katakana"} Quiz
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Question {Math.min(idx + 1, pool.length)} / {pool.length}
+          </p>
         </div>
+      </div>
         <div className="p-6">
           {done ? (
             <div className="text-center py-6">
@@ -372,7 +369,6 @@ function KanaQuiz({
             <div className="py-10 text-center text-muted-foreground">Loading…</div>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
