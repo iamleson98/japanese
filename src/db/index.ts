@@ -1,12 +1,9 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { getDatabaseUrl } from "./connection-string";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required for the PostgreSQL database connection.");
-}
+const connectionString = getDatabaseUrl();
 
 const globalForDb = globalThis as unknown as {
   _pool: Pool | undefined;

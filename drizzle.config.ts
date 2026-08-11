@@ -1,10 +1,7 @@
 import { defineConfig } from "drizzle-kit";
+import { getDatabaseUrl } from "./src/db/connection-string";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required for PostgreSQL Drizzle commands.");
-}
+const connectionString = getDatabaseUrl();
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
