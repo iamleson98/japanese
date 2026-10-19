@@ -46,6 +46,7 @@ export function VocabularySection() {
   const [categories, setCategories] = React.useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [added, setAdded] = React.useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = React.useState(60);
   const romajiMode = useApp((s) => s.romajiMode);
 
   // Load vocab for the level
@@ -90,6 +91,11 @@ export function VocabularySection() {
     }
     return out;
   }, [items, category, query]);
+
+  // Reset pagination whenever the filter changes
+  React.useEffect(() => {
+    setVisibleCount(60);
+  }, [level, category, query]);
 
   async function addToDeck(v: Vocab) {
     if (added.has(v.id)) return;
@@ -203,17 +209,32 @@ export function VocabularySection() {
           description="Try a different level, category, or search term."
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((v) => (
-            <VocabCard
-              key={v.id}
-              v={v}
-              added={added.has(v.id)}
-              onAdd={() => addToDeck(v)}
-              showRomaji={romajiMode !== "never"}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.slice(0, visibleCount).map((v) => (
+              <VocabCard
+                key={v.id}
+                v={v}
+                added={added.has(v.id)}
+                onAdd={() => addToDeck(v)}
+                showRomaji={romajiMode !== "never"}
+              />
+            ))}
+          </div>
+          {filtered.length > visibleCount && (
+            <div className="mt-5 flex flex-col items-center gap-1.5">
+              <button
+                onClick={() => setVisibleCount((c) => c + 60)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent transition"
+              >
+                Show more
+                <span className="text-muted-foreground">
+                  ({visibleCount} of {filtered.length})
+                </span>
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

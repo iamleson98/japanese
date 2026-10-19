@@ -1,11 +1,29 @@
 import { db, schema } from "@/db";
 import { v4 as uuid } from "uuid";
-import { EXPANDED_GRAMMAR } from "./grammar-content";
+import { EXPANDED_GRAMMAR, type ExpandedGrammar } from "./grammar-content";
+import { GRAMMAR_N5_N4_B } from "./content/grammar-n5-n4-b";
+import { GRAMMAR_N3_B } from "./content/grammar-n3-b";
+import { VOCAB_N5A } from "./content/vocab-n5-a";
+import { VOCAB_N5B } from "./content/vocab-n5-b";
+import { VOCAB_N5C } from "./content/vocab-n5-c";
+import { VOCAB_N4A } from "./content/vocab-n4-a";
+import { VOCAB_N4B } from "./content/vocab-n4-b";
+import { VOCAB_N4C } from "./content/vocab-n4-c";
+import { VOCAB_N3A } from "./content/vocab-n3-a";
+import { VOCAB_N3B } from "./content/vocab-n3-b";
+import { VOCAB_N3C } from "./content/vocab-n3-c";
+import { KANJI_N54A } from "./content/kanji-n54-a";
+import { KANJI_N54B } from "./content/kanji-n54-b";
+import { KANJI_N54C } from "./content/kanji-n54-c";
+import { KANJI_N54D } from "./content/kanji-n54-d";
+import { KANJI_N3A } from "./content/kanji-n3-a";
+import { KANJI_N3B } from "./content/kanji-n3-b";
+import { KANJI_N3C } from "./content/kanji-n3-c";
 
 /**
  * Drizzle-based seed for the Nihongo Path Japanese learning app.
- * Seeds: kana, vocabulary, grammar (EXPANDED), kanji (chunked into sets),
- *        counters, conjugations, resources.
+ * Seeds: kana, vocabulary (core + 2,300-word expansion), grammar (125 points),
+ *        kanji (548 chars incl. full N3 set), counters, conjugations, resources.
  */
 
 // =================== KANA ===================
@@ -326,7 +344,60 @@ const N3_VOCAB: Vocab[] = [
   { word: "のんびり", reading: "のんびり", meaning: "leisurely", romaji: "nonbiri", level: "N3", category: "adverbs", pos: "adverb", lesson: 19, exampleJp: "のんびり過ごしたい。", exampleEn: "I want to spend my time leisurely.", order: 32 },
 ];
 
-const ALL_VOCAB: Vocab[] = [...BASE_VOCAB, ...EXTRA_VOCAB, ...N4_VOCAB, ...N3_VOCAB];
+// ------------------ Content expansion wiring ------------------
+// 9 vocab files (2,307 words), 7 kanji files (471 chars), 2 grammar files (56 pts)
+const CONTENT_VOCAB: Vocab[] = [
+  ...VOCAB_N5A, ...VOCAB_N5B, ...VOCAB_N5C,
+  ...VOCAB_N4A, ...VOCAB_N4B, ...VOCAB_N4C,
+  ...VOCAB_N3A, ...VOCAB_N3B, ...VOCAB_N3C,
+];
+
+// Assign a lesson number to expanded vocab by (level, category) so the
+// guided Lessons stay rich. Words that already carry a lesson keep it.
+const LESSON_BY_CATEGORY: Record<string, number> = {
+  // N5 (lessons 1-12; 10/12 are review lessons)
+  "N5:greetings": 1, "N5:expressions": 11,
+  "N5:family": 2, "N5:people": 2, "N5:question-words": 2, "N5:school": 2,
+  "N5:quantities": 3, "N5:time": 3, "N5:numbers": 3,
+  "N5:food": 4,
+  "N5:places": 5, "N5:transport": 5, "N5:shopping": 5, "N5:home": 5, "N5:jobs": 7,
+  "N5:adjectives": 6, "N5:weather": 6, "N5:nature": 6, "N5:clothes": 6,
+  "N5:body": 6, "N5:health": 6, "N5:communication": 8,
+  "N5:verbs-daily": 7, "N5:adverbs": 7,
+  "N5:verbs-communication": 8, "N5:verbs-movement": 9, "N5:hobbies": 9,
+  "N5:conjunctions": 11,
+  // N4 (lessons 13-18; 18 is review)
+  "N4:expressions": 13, "N4:time": 13, "N4:conjunctions": 13, "N4:places": 13, "N4:travel": 13,
+  "N4:thinking-feelings": 14, "N4:emotions-personality": 14, "N4:events-festivals": 14,
+  "N4:keigo": 15, "N4:people-society": 15, "N4:media-communication": 15,
+  "N4:home-life": 16, "N4:house-diy": 16, "N4:food-meals": 16, "N4:health-body": 16,
+  "N4:emergencies": 16, "N4:sports-leisure": 16, "N4:nature-seasons": 16, "N4:weather": 16,
+  "N4:school-work": 17, "N4:money-shopping": 17, "N4:insurance-law": 17,
+  "N4:it-electronics": 17, "N4:practical-misc": 17,
+  "N4:adjectives": 14, "N4:adverbs": 13, "N4:verbs-daily": 16, "N4:compound-verbs": 16,
+  "N4:communication": 15, "N4:quantities": 17, "N4:nature": 16, "N4:patterns": 13,
+  // N3 (lessons 19-25; 25 is review)
+  "N3:abstract-nouns": 19, "N3:society": 19, "N3:formal-nouns": 19,
+  "N3:social-issues": 19, "N3:politics-media": 19, "N3:disasters": 19, "N3:effects": 19,
+  "N3:business-office": 20, "N3:formal-verbs": 20, "N3:economy": 20,
+  "N3:formal-adjectives": 21, "N3:formal-adverbs": 21, "N3:degree-manner": 21,
+  "N3:science-technology": 21,
+  "N3:emotions": 22, "N3:relationships": 22,
+  "N3:communication-casual": 23, "N3:culture-tradition": 23,
+  "N3:arts-entertainment": 23, "N3:idiomatic-expressions": 23,
+  "N3:proverbs": 23, "N3:onomatopoeia": 23, "N3:onomatopoeia-mimetic": 23,
+  "N3:law-politics-crime": 24, "N3:medicine-body": 24, "N3:education-school": 24,
+  "N3:sports-competition": 24, "N3:nature-geography": 24, "N3:media": 24,
+  "N3:media-communication": 24, "N3:practical-misc": 24,
+};
+const LESSON_FALLBACK: Record<string, number> = { N5: 9, N4: 17, N3: 24 };
+
+const CONTENT_VOCAB_WITH_LESSONS: Vocab[] = CONTENT_VOCAB.map((v) => ({
+  ...v,
+  lesson: v.lesson ?? LESSON_BY_CATEGORY[`${v.level}:${v.category}`] ?? LESSON_FALLBACK[v.level] ?? 9,
+}));
+
+const ALL_VOCAB: Vocab[] = [...BASE_VOCAB, ...EXTRA_VOCAB, ...N4_VOCAB, ...N3_VOCAB, ...CONTENT_VOCAB_WITH_LESSONS];
 
 // =================== KANJI (chunked into sets of 10) ===================
 type Kanji = {
@@ -392,7 +463,14 @@ const BASE_KANJI: Kanji[] = [
   { character: "電", onyomi: "デン", kunyomi: "—", meaning: "electricity", level: "N5", strokeCount: 13, radical: "雨", mnemonic: "Rain (雨) with a tail — lightning, electricity.", exampleWord: "電話", exampleRead: "でんわ", exampleMean: "telephone", order: 53 },
 ];
 
-const ALL_KANJI: Kanji[] = [...BASE_KANJI, ...EXTRA_KANJI];
+const ALL_KANJI: Kanji[] = [
+  ...BASE_KANJI, ...EXTRA_KANJI,
+  ...KANJI_N54A, ...KANJI_N54B, ...KANJI_N54C, ...KANJI_N54D,
+  ...KANJI_N3A, ...KANJI_N3B, ...KANJI_N3C,
+];
+
+// All grammar: original 69 + N5/N4 gap 28 + N3 gap 28 = 125 points
+const ALL_GRAMMAR: ExpandedGrammar[] = [...EXPANDED_GRAMMAR, ...GRAMMAR_N5_N4_B, ...GRAMMAR_N3_B];
 
 // =================== RESOURCES ===================
 type Resource = {
@@ -462,13 +540,18 @@ async function main() {
   }
   console.log(`  ✓ ${allKana.length} kana seeded`);
 
-  // Vocabulary (dedupe by word+reading+level)
+  // Vocabulary (dedupe by word+reading+level, renumber order per level,
+  // batch inserts for speed)
   const seenVocab = new Set<string>();
+  const vocabRows: (typeof schema.vocabulary.$inferInsert)[] = [];
+  const orderCounter: Record<string, number> = { N5: 0, N4: 0, N3: 0 };
   for (const v of ALL_VOCAB) {
     const key = `${v.word}|${v.reading}|${v.level}`;
     if (seenVocab.has(key)) continue;
     seenVocab.add(key);
-    await db.insert(schema.vocabulary).values({
+    if (!(v.level in orderCounter)) orderCounter[v.level] = 0;
+    orderCounter[v.level] += 1;
+    vocabRows.push({
       id: uuid(),
       word: v.word, reading: v.reading, meaning: v.meaning, romaji: v.romaji ?? null,
       level: v.level, category: v.category, pos: v.pos ?? null,
@@ -476,15 +559,20 @@ async function main() {
       lesson: v.lesson ?? null,
       exampleJp: v.exampleJp ?? null, exampleEn: v.exampleEn ?? null,
       exampleJp2: v.exampleJp2 ?? null, exampleEn2: v.exampleEn2 ?? null,
-      order: v.order ?? 0,
+      order: orderCounter[v.level],
     });
   }
-  console.log(`  ✓ ${seenVocab.size} vocabulary words seeded`);
+  for (let i = 0; i < vocabRows.length; i += 100) {
+    await db.insert(schema.vocabulary).values(vocabRows.slice(i, i + 100));
+  }
+  const vocabByLevel = { N5: 0, N4: 0, N3: 0 };
+  for (const r of vocabRows) vocabByLevel[r.level as "N5" | "N4" | "N3"]++;
+  console.log(`  ✓ ${vocabRows.length} vocabulary words seeded (N5: ${vocabByLevel.N5}, N4: ${vocabByLevel.N4}, N3: ${vocabByLevel.N3})`);
 
-  // Grammar (EXPANDED)
+  // Grammar (original 69 + gap-fill 56 = 125 points)
   const seenGrammar = new Set<string>();
   let grammarCount = 0;
-  for (const g of EXPANDED_GRAMMAR) {
+  for (const g of ALL_GRAMMAR) {
     if (seenGrammar.has(g.title)) continue;
     seenGrammar.add(g.title);
     // Pick first example as the legacy single-example fields for backward compat
@@ -509,7 +597,7 @@ async function main() {
     });
     grammarCount++;
   }
-  console.log(`  ✓ ${grammarCount} grammar points seeded (EXPANDED)`);
+  console.log(`  ✓ ${grammarCount} grammar points seeded (EXPANDED + gap-fill)`);
 
   // Kanji — chunk into sets of 10 per level
   // Sort by level then order, then assign set numbers 1, 2, 3... within each level
@@ -522,31 +610,31 @@ async function main() {
     kanjiByLevel[k.level].push(k);
   }
   let kanjiCount = 0;
+  const kanjiRows: (typeof schema.kanji.$inferInsert)[] = [];
   for (const lvl of ["N5", "N4", "N3"] as const) {
     const arr = kanjiByLevel[lvl];
     arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     arr.forEach((k, idx) => {
       const set = Math.floor(idx / 10) + 1; // 1-based set per level
-      // tag the kanji with its set
-      (k as any)._set = set;
-    });
-  }
-  for (const lvl of ["N5", "N4", "N3"] as const) {
-    for (const k of kanjiByLevel[lvl]) {
-      await db.insert(schema.kanji).values({
+      kanjiRows.push({
         id: uuid(),
         character: k.character, onyomi: k.onyomi, kunyomi: k.kunyomi, meaning: k.meaning,
         level: k.level, strokeCount: k.strokeCount, jlpt: k.level,
         radical: k.radical ?? null, mnemonic: k.mnemonic ?? null,
-        set: (k as any)._set,
+        set,
         exampleWord: k.exampleWord ?? null,
         exampleRead: k.exampleRead ?? null, exampleMean: k.exampleMean ?? null,
-        order: k.order ?? 0,
+        order: idx + 1,
       });
-      kanjiCount++;
-    }
+    });
   }
-  console.log(`  ✓ ${kanjiCount} kanji seeded (chunked into sets of 10)`);
+  for (let i = 0; i < kanjiRows.length; i += 100) {
+    await db.insert(schema.kanji).values(kanjiRows.slice(i, i + 100));
+  }
+  kanjiCount = kanjiRows.length;
+  const kanjiByLvlCounts = { N5: 0, N4: 0, N3: 0 };
+  for (const r of kanjiRows) kanjiByLvlCounts[r.level as "N5" | "N4" | "N3"]++;
+  console.log(`  ✓ ${kanjiCount} kanji seeded (N5: ${kanjiByLvlCounts.N5}, N4: ${kanjiByLvlCounts.N4}, N3: ${kanjiByLvlCounts.N3} — sets of 10)`);
 
   // Counters
   for (const c of COUNTERS) {
