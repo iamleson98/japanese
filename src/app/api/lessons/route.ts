@@ -75,9 +75,7 @@ export async function GET(req: Request) {
     const [vocab, grammar, kanji] = await Promise.all([
       db.select().from(schema.vocabulary).where(eq(schema.vocabulary.lesson, id)),
       db.select().from(schema.grammar).where(eq(schema.grammar.lesson, id)),
-      lesson.level === "N5" || lesson.level === "N4"
-        ? db.select().from(schema.kanji).where(eq(schema.kanji.level, lesson.level))
-        : Promise.resolve([]),
+      db.select().from(schema.kanji).where(eq(schema.kanji.level, lesson.level)),
     ]);
 
     // Parse grammar JSON fields
