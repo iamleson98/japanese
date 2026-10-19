@@ -141,3 +141,36 @@ Stage Summary:
 - Kanji: set-based chunking (10 per set) for smaller sessions.
 - Browser-verified: lessons step flow works, grammar exercises work (fill-blank + MCQ), YouTube plays in-app, kanji sets work, dashboard roadmap shows progress, server stable.
 - Lint clean. No runtime errors.
+
+---
+Task ID: J2 (main session)
+Agent: main (Z.ai Code)
+Task: Deep-research-driven N5/N4/N3 content expansion — make lessons full, rich, complete. Recover from two environment crashes. Push to GitHub.
+
+Work Log:
+- Continued prior session's plan: integrate pending content files (1,683 vocab + 224 kanji) into the seed.
+- Cleaned artifacts from the interrupted kanji file (16 dup-guard entries + garbage entries → fixed to 参/許).
+- Extracted canonical word/character inventories from DB + files for subagent prompts.
+- Launched 5 parallel content subagents (N3 kanji, N5/N4 grammar gap 28 pts, N3 grammar gap 28 pts, N3 vocab part C, N4 vocab part C). 3 succeeded; 2 kanji agents were killed by an environment container restart.
+- ENVIRONMENT CRASH #1 (10:32): container restarted; filesystem rolled back to a ~02:30 snapshot — destroyed the japanese repo working tree (incl. untracked content files), killed postgres/dev server. Root git repo had no copies. Recovered inventories from conversation context.
+- Recovery: re-cloned from GitHub; wrote recovery-inventory files (N5:777/N4:523/N3:549 words, 300 kanji chars) — verified counts match pre-crash exactly; committed to a new `content-expansion` branch and pushed (protecting all future work against rollbacks).
+- Restored infrastructure: portable Postgres 17.2 (zonky binaries from Maven Central) on port 5433, initdb, drizzle-kit push, baseline seed. Discovered platform env var DATABASE_URL (sqlite default) shadows .env — must export explicitly.
+- Regenerated ALL content via 15 subagent runs (smaller chunks + incremental writes + strict no-destructive-command rules after the crash):
+  * vocab-n5-a/b/c (250+250+90), vocab-n4-a/b/c (250+247+255), vocab-n3-a/b/c (260+262+256)
+  * kanji-n54-a/b/c/d (62+62+62+60), kanji-n3-a/b/c (84+63+78)
+  * grammar-n5-n4-b (28 pts, orders 70-97), grammar-n3-b (28 pts, orders 98-125)
+- ENVIRONMENT CRASH #2 (13:44): container restarted again mid-batch; everything was safe on GitHub (committed after every batch); only the in-flight kanji-n3-b file needed rescue from disk.
+- Fixed 两→両 typo in curated N3 kanji target list (simplified char slipped into my curation).
+- Ran all 18 validators — ALL PASS (exact target coverage, no dups, examples on every entry, no simplified chars).
+- Seed integration: seed.ts imports all 25 content files; category→lesson assignment map; batched inserts; per-level order renumbering. Final seeded content: 2,360 vocab (N5:777/N4:778/N3:805), 125 grammar points, 548 kanji (N5:125/N4:198/N3:225), 138 kana, 20 counters, 27 conjugations, 28 resources.
+- App updates: lessons API now loads kanji for N3 lessons (was N5/N4 only); vocabulary UI got show-more pagination (60/page) for the 800-word levels.
+- Browser-verified with agent-browser: dashboard 2360 words; vocab pagination 60→120 of 777; N3 kanji 22+1 sets (愛 renders); lesson 19 (N3) Kanji step works; grammar 125 points loads; quiz generates questions from new pool; zero console/page errors. Screenshots saved to /home/z/my-project/download/.
+- ESLint clean. tsc clean on app code (validator scripts use bun-specific import.meta — dev tooling only, not part of next build).
+- Merged content-expansion → master (d00340a, 61 files, +12,755 lines) and pushed.
+
+Stage Summary:
+- Content corpus: 240→2,360 vocab, 69→125 grammar, 77→548 kanji (~10x expansion). N5/N4/N3 are now full, rich, complete.
+- Every vocab entry: reading + meaning + romaji + category + pos + verbGroup + original example sentence pair.
+- Every kanji: onyomi/kunyomi + meaning + strokes + radical + original mnemonic + example word.
+- Every grammar point: structure + meaning + long rule + 3-verb-group conjugation + usage + ✗→✓ common mistake + 3 difficulty-tiered examples + 2-3 interactive exercises.
+- Disaster recovery: survived 2 container restarts via commit-after-every-batch discipline; all work pushed to GitHub.
