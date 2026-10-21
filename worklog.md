@@ -204,3 +204,27 @@ Stage Summary:
 - 3 major new learning features: comprehension dojo, JLPT mock exams, typing drills; Vietnamese localization throughout.
 - Tooling: scripts/merge-neon.ts, test-fsrs.ts, test-romaji.ts, add-indexes.ts, inspect scripts.
 - Screenshots: /home/z/my-project/download/jp-dashboard.png, jp-practice-done.png, jp-mocktest-result.png, jp-lessons.png, jp-final-dashboard.png.
+
+---
+Task ID: J4 (main session)
+Agent: main (Z.ai)
+Task: Deep research on real-world Japanese learning practice -> design and implement the system layer that makes learning as fast and easy as possible.
+
+Work Log:
+- Deep research (3 web-search batches, 15 queries): Refold/AJATT immersion method (comprehension-first, core-vocab front-load ~1.5k words, sentence mining), JLPT study-hours data (Coto: N5 180-210h; 2h/day halves calendar time), vocabulary coverage economics (400 words=50%, 1,500=80%, 3k=conversation), FSRS retention sweet spot (0.85-0.90 minimizes reviews/card; workload spikes >0.90), new-cards/day (10-20 sustainable = 3,650/year), spacing effect + retrieval practice + interleaving, sleep consolidation (declarative->slow-wave; evening-encode/morning-review rhythm), shadowing meta-analysis 2025 (44 studies: fluency+prosody, Kadota IPOM framework), Duolingo habit science (streak loss-aversion, one-button lessons, churn 47%->28%), WaniKani radical/mnemonic method.
+- Gap analysis: app had strong pieces (FSRS-5, dojo, mock test, 3.1k vocab) but no orchestration layer -> decision fatigue across 13 sections.
+- Implemented Smart Study session (/smart-study + /api/smart-session): interleaved daily loop (due reviews across all 5 card types round-robin -> new words -> grammar-of-day with MCQ exercises -> dojo passage + shadowing -> 5-question mixed quiz), deterministic per-date picks, level detection (first level <80% vocab mastery), session log table + 10 XP completion bonus, overview with blocks/minutes/rhythm-tip/readiness meters, dashboard hero CTA.
+- Sentence mining: mined_sentence table + /api/sentences (auto-enroll into SRS, dedupe by source AND text, delete cascades progress); MineButton on vocab examples (both), grammar examples, dojo passage + per-sentence in shadowing; 'Mined sentences' deck in Flashcards (5th type) with sentence front/back + vi + TTS.
+- ShadowPlayer component (src/components/app/shadow-player.tsx): sentence splitting, autoplay, replay, per-sentence mine star, 'I said it' advance, self-rating (hard/ok/easy); embedded in dojo + smart session (both listening AND reading passages).
+- Reverse-recall challenge: mature vocab cards (stability>=21d, reps>=2) flip EN->JP 40% of the time in reviews (flashcards section + smart session); setting toggle.
+- Flashcards API: sentence type support, frequency-first fresh ordering (level asc -> order asc), dueLimit/newLimit params; sentence deck in UI (level picker hidden).
+- Settings: new cards/day (5/10/15/20) + reverse challenge toggle; nav gains Study (今日の学習) entry.
+- DB: pushed mined_sentence + study_session to Neon (drizzle-kit push), unique indexes via scripts/add-smart-indexes.ts (source dedupe, one session per date).
+- Bug fixes found during E2E: fill-blank grammar exercises rendered unanswerable (filter now requires options+answer), finishSession POST was never invoked (wired via done-phase effect with statsRef), input block double-click redundancy removed (shadowing now flows straight to block completion).
+- Browser-verified E2E (agent-browser): dashboard CTA -> full session run (1 due kana graded Good; 10 new N5 cards revealed+graded; grammar まで exercise 1/1; My Day reading 4 Qs + score + XP; quiz 4/5) -> completion screen + study_session row in Neon + XP bonus; sentence mining from vocab UI -> deck review -> FSRS grade (reps 1, interval 3d); dojo ShadowPlayer 8 sentences -> self-rated OK; reverse/secondary flows; zero console/page errors.
+- tsc clean on app code; eslint 0 errors 0 warnings. Committed 62b3f85 and pushed to master (19 files, +2,818 lines).
+
+Stage Summary:
+- The app now has a learning SYSTEM, not just features: one-button daily session orchestrating everything in the research-backed order.
+- Real-world practice pillars implemented: sentence mining, shadowing, frequency-first acquisition, production recall, morning/evening rhythm guidance, sustainable pacing.
+- All progress data on the user's real Neon DB; new tables additive (no data loss).
