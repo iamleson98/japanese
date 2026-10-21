@@ -15,6 +15,7 @@ import { Modal } from "@/components/app/modal";
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { getFlashcardsHref } from "@/lib/routes";
+import { useApp } from "@/lib/store";
 import { toast } from "sonner";
 
 type Kanji = {
@@ -22,6 +23,8 @@ type Kanji = {
   character: string;
   onyomi: string;
   kunyomi: string;
+  hanViet: string | null;
+  viMeaning: string | null;
   meaning: string;
   level: string;
   strokeCount: number;
@@ -231,6 +234,7 @@ function KanjiDetail({
   onClose: () => void;
   onAdd: () => void;
 }) {
+  const showVi = useApp((s) => s.showVietnamese);
   return (
     <Modal open onClose={onClose} className="max-w-lg">
       <div className="flex items-center justify-between border-b border-border px-5 py-3 pr-12">
@@ -256,6 +260,13 @@ function KanjiDetail({
             </button>
             <div className="min-w-0 flex-1">
               <h3 className="text-lg font-bold">{k.meaning}</h3>
+              {showVi && (k.hanViet || k.viMeaning) && (
+                <p className="text-sm text-muted-foreground italic">
+                  {k.hanViet && <span className="font-medium not-italic">{k.hanViet}</span>}
+                  {k.hanViet && k.viMeaning && " — "}
+                  {k.viMeaning}
+                </p>
+              )}
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex gap-2">
                   <dt className="w-20 shrink-0 text-muted-foreground">On'yomi</dt>

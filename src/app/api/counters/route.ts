@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const level = searchParams.get("level");
   const where: { level?: string } = {};
   let rows = await db.select().from(schema.counter);
-  if (level && ["N5", "N4", "N3"].includes(level)) {
+  if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) {
     rows = rows.filter((c) => c.level === level);
   }
   rows.sort((a, b) => a.level.localeCompare(b.level) || (a.order ?? 0) - (b.order ?? 0));

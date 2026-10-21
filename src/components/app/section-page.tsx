@@ -9,6 +9,8 @@ import { GrammarSection } from "@/components/sections/grammar";
 import { KanaSection } from "@/components/sections/kana";
 import { KanjiSection } from "@/components/sections/kanji";
 import { LessonsSection } from "@/components/sections/lessons";
+import { MockTestSection } from "@/components/sections/mock-test";
+import { PracticeSection } from "@/components/sections/practice";
 import { QuizSection } from "@/components/sections/quiz";
 import { ResourcesSection } from "@/components/sections/resources";
 import { VocabularySection } from "@/components/sections/vocabulary";
@@ -24,6 +26,8 @@ export function SectionPage({ section }: { section: SectionId }) {
         {section === "grammar" && <GrammarSection />}
         {section === "kanji" && <KanjiSection />}
         {section === "flashcards" && <FlashcardsSection />}
+        {section === "practice" && <PracticeSection />}
+        {section === "mock-test" && <MockTestSection />}
         {section === "resources" && <ResourcesSection />}
         {section === "counters" && <CountersSection />}
         {section === "conjugations" && <ConjugationsSection />}

@@ -9,6 +9,8 @@ export const SECTION_IDS = [
   "grammar",
   "kanji",
   "flashcards",
+  "practice",
+  "mock-test",
   "resources",
   "counters",
   "conjugations",

@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const level = searchParams.get("level");
   const group = searchParams.get("group");
   let rows = await db.select().from(schema.conjugation);
-  if (level && ["N5", "N4", "N3"].includes(level)) {
+  if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) {
     rows = rows.filter((c) => c.level === level);
   }
   if (group) {

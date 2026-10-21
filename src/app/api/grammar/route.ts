@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const lesson = searchParams.get("lesson");
 
   let rows = await db.select().from(schema.grammar);
-  if (level && ["N5", "N4", "N3"].includes(level)) {
+  if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) {
     rows = rows.filter((g) => g.level === level);
   }
   if (lesson) {

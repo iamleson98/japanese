@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const set = searchParams.get("set"); // kanji set (1-based, 10 per set per level)
 
   let rows = await db.select().from(schema.kanji);
-  if (level && ["N5", "N4", "N3"].includes(level)) {
+  if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) {
     rows = rows.filter((k) => k.level === level);
   }
   if (set) {

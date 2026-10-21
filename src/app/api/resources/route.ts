@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const topic = searchParams.get("topic");
 
   let rows = await db.select().from(schema.resource);
-  if (level && ["N5", "N4", "N3", "all"].includes(level)) {
+  if (level && ["N5", "N4", "N3", "N2", "N1", "all"].includes(level)) {
     rows = rows.filter((r) => r.level === level);
   }
   if (topic) {

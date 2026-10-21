@@ -20,20 +20,20 @@ export async function GET(req: Request) {
 
   if (type === "vocabulary") {
     let items = await db.select().from(schema.vocabulary);
-    if (level && ["N5", "N4", "N3"].includes(level)) items = items.filter((v) => v.level === level);
+    if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) items = items.filter((v) => v.level === level);
     if (items.length < 4) return NextResponse.json({ questions: [] });
     const chosen = shuffle(items).slice(0, Math.min(count, items.length));
     const questions = chosen.map((v) => {
       const distractors = shuffle(items.filter((x) => x.id !== v.id && x.meaning !== v.meaning)).slice(0, 3);
       const options = shuffle([v.meaning, ...distractors.map((d) => d.meaning)]);
-      return { id: v.id, prompt: v.word, subPrompt: v.reading, questionType: "meaning", answer: v.meaning, options, speak: v.word, level: v.level };
+      return { id: v.id, prompt: v.word, subPrompt: v.reading, questionType: "meaning", answer: v.meaning, options, speak: v.word, level: v.level, vi: v.viMeaning, word: v.word, reading: v.reading };
     });
     return NextResponse.json({ questions, type: "vocabulary" });
   }
 
   if (type === "kanji") {
     let items = await db.select().from(schema.kanji);
-    if (level && ["N5", "N4", "N3"].includes(level)) items = items.filter((k) => k.level === level);
+    if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) items = items.filter((k) => k.level === level);
     if (items.length < 4) return NextResponse.json({ questions: [] });
     const chosen = shuffle(items).slice(0, Math.min(count, items.length));
     const questions = chosen.map((k) => {
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
 
   if (type === "grammar") {
     let items = await db.select().from(schema.grammar);
-    if (level && ["N5", "N4", "N3"].includes(level)) items = items.filter((g) => g.level === level);
+    if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) items = items.filter((g) => g.level === level);
     if (items.length < 4) return NextResponse.json({ questions: [] });
     const chosen = shuffle(items).slice(0, Math.min(count, items.length));
     const questions = chosen.map((g) => {

@@ -187,6 +187,9 @@ type Vocab = {
   order?: number;
 };
 
+// All 138 kana (hiragana + katakana incl. dakuten/handakuten/yōon)
+const ALL_KANA: KanaSeed[] = [...HIRAGANA, ...KATAKANA];
+
 // Original base vocab (N5 core + N4 + N3) — kept inline for stability
 const BASE_VOCAB: Vocab[] = [
   // N5 greetings
@@ -531,7 +534,7 @@ async function main() {
   ]);
 
   // Kana
-  const allKana = [...HIRAGANA, ...KATAKANA];
+  const allKana = ALL_KANA;
   for (const k of allKana) {
     await db.insert(schema.kana).values({
       id: uuid(), char: k.char, romaji: k.romaji, type: k.type, row: k.row,
@@ -685,7 +688,23 @@ async function main() {
   console.log("✅ Seed complete.");
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Make the assembled datasets importable (merge scripts, tooling) while only
+// executing the destructive seed when run directly.
+export {
+  HIRAGANA,
+  KATAKANA,
+  ALL_KANA,
+  ALL_VOCAB,
+  ALL_KANJI,
+  ALL_GRAMMAR,
+  YOUTUBE_RESOURCES,
+  COUNTERS,
+  CONJUGATIONS,
+};
+
+if (import.meta.main) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

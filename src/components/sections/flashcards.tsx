@@ -24,6 +24,8 @@ import {
 import { SectionHeader, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { getFlashcardsHref, getSectionHref, isFlashcardRouteType } from "@/lib/routes";
+import { useApp } from "@/lib/store";
+import { schedule, qualityToGrade, describeInterval } from "@/lib/fsrs";
 
 type CardType = "vocabulary" | "kana" | "kanji" | "grammar";
 
@@ -56,7 +58,7 @@ type DueCard = {
   explanation?: string;
   exampleJp?: string | null;
   exampleEn?: string | null;
-  progress?: { box: number; reps: number; lapses: number } | null;
+  progress?: { box: number; reps: number; lapses: number; stability?: number; difficulty?: number; lastSeenAt?: string | null } | null;
 };
 
 type Phase = "setup" | "review" | "done";
@@ -248,7 +250,7 @@ function SetupScreen({
         <div className="mb-6">
           <div className="text-sm font-medium mb-2">Level</div>
           <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
-            {["N5", "N4", "N3"].map((lvl) => (
+            {["N5", "N4", "N3", "N2", "N1"].map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => setLevel(lvl)}
@@ -286,13 +288,13 @@ function SetupScreen({
       <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-5">
         <h3 className="font-semibold flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" />
-          How the review works
+          How the review works — FSRS-5
         </h3>
         <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-          <li>• <strong>Again</strong> — got it wrong, show it again this session (1-min reschedule).</li>
-          <li>• <strong>Hard</strong> — barely got it, short interval increase.</li>
-          <li>• <strong>Good</strong> — solid, normal interval growth.</li>
-          <li>• <strong>Easy</strong> — trivial, longer interval.</li>
+          <li>• Cards are scheduled by <strong>FSRS-5</strong>, the state-of-the-art memory model (used by modern Anki) — it predicts your recall probability and schedules each card at the optimal moment.</li>
+          <li>• <strong>Again</strong> — forgot it: comes back within this session, memory stability resets partially.</li>
+          <li>• <strong>Hard / Good / Easy</strong> — all count as recall; the next interval adapts to the card&apos;s difficulty and how close you were to forgetting (spacing effect).</li>
+          <li>• Set your target retention (85 / 90 / 95%) in Settings — lower means fewer reviews and faster coverage.</li>
         </ul>
       </div>
     </div>
@@ -313,6 +315,7 @@ function ReviewSession({
   onFinish: (correct: number, wrong: number) => void;
   onExit: () => void;
 }) {
+  const desiredRetention = useApp((s) => s.desiredRetention);
   const [queue, setQueue] = React.useState<DueCard[]>(cards);
   const [idx, setIdx] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
@@ -351,6 +354,7 @@ function ReviewSession({
           itemType: type,
           itemId: current.id,
           quality,
+          retention: desiredRetention,
         }),
       });
     } catch {}
@@ -369,6 +373,29 @@ function ReviewSession({
       }
       setReviewing(false);
     }, 220);
+  }
+
+  // Live FSRS preview of the next interval for each grade (shown on grade buttons)
+  function previewInterval(quality: "again" | "hard" | "good" | "easy"): string {
+    if (!current) return "";
+    try {
+      const p = current.progress ?? null;
+      const result = schedule(
+        {
+          stability: p?.stability ?? 0,
+          difficulty: p?.difficulty ?? 5,
+          reps: p?.reps ?? 0,
+          lapses: p?.lapses ?? 0,
+          lastSeenAt: p?.lastSeenAt ? new Date(p.lastSeenAt).getTime() : null,
+        },
+        qualityToGrade(quality),
+        Date.now(),
+        desiredRetention,
+      );
+      return describeInterval(result.interval);
+    } catch {
+      return "";
+    }
   }
 
   // Check if we've gone through everything
@@ -441,10 +468,10 @@ function ReviewSession({
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-4 gap-2">
-            <GradeBtn label="Again" color="rose" sub="<1m" onClick={() => grade("again")} disabled={reviewing} />
-            <GradeBtn label="Hard" color="amber" sub="~1d" onClick={() => grade("hard")} disabled={reviewing} />
-            <GradeBtn label="Good" color="emerald" sub="~2d" onClick={() => grade("good")} disabled={reviewing} />
-            <GradeBtn label="Easy" color="primary" sub="~4d" onClick={() => grade("easy")} disabled={reviewing} />
+            <GradeBtn label="Again" color="rose" sub={previewInterval("again")} onClick={() => grade("again")} disabled={reviewing} />
+            <GradeBtn label="Hard" color="amber" sub={previewInterval("hard")} onClick={() => grade("hard")} disabled={reviewing} />
+            <GradeBtn label="Good" color="emerald" sub={previewInterval("good")} onClick={() => grade("good")} disabled={reviewing} />
+            <GradeBtn label="Easy" color="primary" sub={previewInterval("easy")} onClick={() => grade("easy")} disabled={reviewing} />
           </div>
         )}
       </div>

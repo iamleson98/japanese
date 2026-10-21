@@ -1,40 +1,27 @@
 import { NextResponse } from "next/server";
 import { db, schema } from "@/db";
-import { eq, and, lte } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
+import {
+  schedule,
+  qualityToGrade,
+  stabilityToBox,
+  difficultyToEase,
+  retrievability,
+  describeInterval,
+} from "@/lib/fsrs";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Flashcards SRS API (Drizzle).
- * GET  ?type=vocabulary&level=N5&limit=20  -> due + fresh cards
- * POST {action:"add", itemType, itemIds:[]} -> enqueue into SRS
- * POST {action:"review", itemType, itemId, quality} -> update SRS + bump activity
- * POST {action:"reset"} -> clear all progress
+ * Flashcards SRS API (Drizzle + FSRS-5).
+ * GET  ?type=vocabulary&level=N5&limit=20  -> due + fresh cards (with predicted recall R)
+ * POST {action:"add", itemType, itemIds:[]}                    -> enqueue into SRS
+ * POST {action:"review", itemType, itemId, quality, retention} -> FSRS-5 update + XP
+ * POST {action:"reset"}                                        -> clear all progress
  */
 
 type Quality = "again" | "hard" | "good" | "easy";
-const QUALITY_MAP: Record<Quality, number> = { again: 0, hard: 3, good: 4, easy: 5 };
-
-function computeNext(p: { box: number; ease: number; interval: number; reps: number; lapses: number }, quality: number) {
-  const q = quality;
-  let ease = p.ease;
-  let interval = p.interval;
-  let box = p.box;
-  let lapses = p.lapses;
-  if (q < 3) {
-    lapses += 1;
-    box = 0;
-    interval = 0;
-    ease = Math.max(130, ease - 20);
-  } else {
-    ease = Math.max(130, ease + (10 - (5 - q) * 8));
-    box = Math.min(5, box + 1);
-    const base = [1, 2, 4, 8, 16, 30][box] ?? 30;
-    interval = Math.max(1, Math.round(base * (ease / 250) + 0.5));
-  }
-  return { ease, interval, box, lapses };
-}
 
 function localDayKey(d: Date): string {
   const y = d.getFullYear();
@@ -43,16 +30,35 @@ function localDayKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+async function bumpStat(key: string, delta: number) {
+  const existing = await db.select().from(schema.stats).where(eq(schema.stats.key, key));
+  if (existing.length) {
+    await db
+      .update(schema.stats)
+      .set({ value: Math.max(0, existing[0].value + delta), updatedAt: new Date().toISOString() })
+      .where(eq(schema.stats.key, key));
+  } else {
+    await db
+      .insert(schema.stats)
+      .values({ id: uuid(), key, value: Math.max(0, delta), updatedAt: new Date().toISOString() });
+  }
+}
+
 async function bumpDailyActivity(count: number) {
   const today = localDayKey(new Date());
   const existing = await db.select().from(schema.dailyActivity).where(eq(schema.dailyActivity.date, today));
   if (existing.length) {
-    await db.update(schema.dailyActivity).set({ count: existing[0].count + count, updatedAt: new Date().toISOString() }).where(eq(schema.dailyActivity.date, today));
+    await db
+      .update(schema.dailyActivity)
+      .set({ count: existing[0].count + count, updatedAt: new Date().toISOString() })
+      .where(eq(schema.dailyActivity.date, today));
   } else {
-    await db.insert(schema.dailyActivity).values({ id: uuid(), date: today, count, updatedAt: new Date().toISOString() });
+    await db
+      .insert(schema.dailyActivity)
+      .values({ id: uuid(), date: today, count, updatedAt: new Date().toISOString() });
   }
   // Recompute streak
-  const recent = await db.select().from(schema.dailyActivity).orderBy(schema.dailyActivity.date);
+  const recent = await db.select().from(schema.dailyActivity);
   const seen = new Set(recent.map((r) => r.date));
   const todayKey = today;
   const yesterdayKey = localDayKey(new Date(Date.now() - 86400000));
@@ -69,9 +75,11 @@ async function bumpDailyActivity(count: number) {
       } else break;
     }
   }
+  await bumpStat("streak", 0); // ensure row exists
   const s = await db.select().from(schema.stats).where(eq(schema.stats.key, "streak"));
-  if (s.length) await db.update(schema.stats).set({ value: streak, updatedAt: new Date().toISOString() }).where(eq(schema.stats.key, "streak"));
-  else await db.insert(schema.stats).values({ id: uuid(), key: "streak", value: streak, updatedAt: new Date().toISOString() });
+  if (s.length && s[0].value !== streak) {
+    await db.update(schema.stats).set({ value: streak, updatedAt: new Date().toISOString() }).where(eq(schema.stats.key, "streak"));
+  }
 }
 
 async function fetchItems(type: string, ids: string[]) {
@@ -123,7 +131,11 @@ export async function GET(req: Request) {
 
   // Due cards
   const allProgress = await db.select().from(schema.flashcardProgress).where(eq(schema.flashcardProgress.itemType, type));
-  const dueProgress = allProgress.filter((p) => new Date(p.dueAt) <= new Date(nowIso)).slice(0, limit);
+  const now = Date.now();
+  const dueProgress = allProgress
+    .filter((p) => new Date(p.dueAt).getTime() <= now)
+    .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+    .slice(0, limit);
   const dueIds = dueProgress.map((p) => p.itemId);
   const dueItems = await fetchItems(type, dueIds);
 
@@ -139,7 +151,12 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     type,
-    due: dueItems.map((it) => ({ ...it, progress: dueProgress.find((p) => p.itemId === it.id) })),
+    due: dueItems.map((it) => {
+      const p = dueProgress.find((p) => p.itemId === it.id);
+      const elapsedDays = p?.lastSeenAt ? Math.max(0, (now - new Date(p.lastSeenAt).getTime()) / 86400000) : 0;
+      const r = p && p.stability > 0 ? retrievability(elapsedDays, p.stability) : null;
+      return { ...it, progress: p ? { ...p, r: Math.round(r! * 100) / 100 } : p };
+    }),
     fresh: freshItems,
   });
 }
@@ -151,10 +168,11 @@ export async function POST(req: Request) {
   if (action === "reset") {
     await db.delete(schema.flashcardProgress);
     await db.delete(schema.dailyActivity);
-    const streakStat = await db.select().from(schema.stats).where(eq(schema.stats.key, "streak"));
-    if (streakStat.length) await db.update(schema.stats).set({ value: 0 }).where(eq(schema.stats.key, "streak"));
-    const totalStat = await db.select().from(schema.stats).where(eq(schema.stats.key, "totalReviewed"));
-    if (totalStat.length) await db.update(schema.stats).set({ value: 0 }).where(eq(schema.stats.key, "totalReviewed"));
+    for (const key of ["streak", "totalReviewed", "xp"]) {
+      const row = await db.select().from(schema.stats).where(eq(schema.stats.key, key));
+      if (row.length) await db.update(schema.stats).set({ value: 0 }).where(eq(schema.stats.key, key));
+      else await db.insert(schema.stats).values({ id: uuid(), key, value: 0 });
+    }
     return NextResponse.json({ ok: true, reset: true });
   }
 
@@ -165,11 +183,15 @@ export async function POST(req: Request) {
     const nowIso = new Date().toISOString();
     let added = 0;
     for (const id of itemIds) {
-      const existing = await db.select().from(schema.flashcardProgress).where(and(eq(schema.flashcardProgress.itemType, itemType), eq(schema.flashcardProgress.itemId, id)));
+      const existing = await db
+        .select()
+        .from(schema.flashcardProgress)
+        .where(and(eq(schema.flashcardProgress.itemType, itemType), eq(schema.flashcardProgress.itemId, id)));
       if (existing.length) continue;
       await db.insert(schema.flashcardProgress).values({
         id: uuid(), itemType, itemId: id,
-        box: 0, ease: 250, interval: 0, dueAt: nowIso,
+        box: 0, ease: 250, interval: 0, stability: 0, difficulty: 5,
+        dueAt: nowIso,
         lastSeenAt: null, reps: 0, lapses: 0, correct: 0, wrong: 0,
       });
       added++;
@@ -182,40 +204,83 @@ export async function POST(req: Request) {
     const itemId = body.itemId as string;
     const quality = body.quality as Quality;
     if (!itemType || !itemId || !quality) return NextResponse.json({ error: "missing params" }, { status: 400 });
-    const q = QUALITY_MAP[quality] ?? 4;
 
-    const existing = await db.select().from(schema.flashcardProgress).where(and(eq(schema.flashcardProgress.itemType, itemType), eq(schema.flashcardProgress.itemId, itemId)));
-    const base = existing[0] ?? { box: 0, ease: 250, interval: 0, reps: 0, lapses: 0, correct: 0, wrong: 0, id: "", lastSeenAt: null };
+    const retention = Math.min(0.97, Math.max(0.8, Number(body.retention) || 0.9));
+    const grade = qualityToGrade(quality);
+    const now = Date.now();
 
-    const next = computeNext(base, q);
-    const passed = q >= 3;
-    const dueAt = passed
-      ? new Date(Date.now() + (next.interval || 0) * 86400000 + 60000).toISOString()
-      : new Date(Date.now() + 60000).toISOString();
+    const existing = await db
+      .select()
+      .from(schema.flashcardProgress)
+      .where(and(eq(schema.flashcardProgress.itemType, itemType), eq(schema.flashcardProgress.itemId, itemId)));
+    const base =
+      existing[0] ?? {
+        id: "", stability: 0, difficulty: 5, reps: 0, lapses: 0,
+        correct: 0, wrong: 0, lastSeenAt: null as string | null,
+      };
+
+    const next = schedule(
+      {
+        stability: base.stability,
+        difficulty: base.difficulty,
+        reps: base.reps,
+        lapses: base.lapses,
+        lastSeenAt: base.lastSeenAt ? new Date(base.lastSeenAt).getTime() : null,
+      },
+      grade,
+      now,
+      retention,
+    );
+
+    const passed = grade >= 2; // hard/good/easy all count as successful recall in FSRS
     const correct = (base.correct ?? 0) + (passed ? 1 : 0);
     const wrong = (base.wrong ?? 0) + (passed ? 0 : 1);
     const reps = (base.reps ?? 0) + 1;
-    const nowIso = new Date().toISOString();
+    const lapses = (base.lapses ?? 0) + (grade === 1 ? 1 : 0);
+    const nowIso = new Date(now).toISOString();
+    const intervalDays = Math.round(next.interval);
+    const xpGain = grade === 1 ? 1 : 2;
+
+    const values = {
+      box: stabilityToBox(next.stability),
+      ease: difficultyToEase(next.difficulty),
+      interval: intervalDays,
+      stability: Math.round(next.stability * 1000) / 1000,
+      difficulty: Math.round(next.difficulty * 1000) / 1000,
+      dueAt: new Date(next.dueAt).toISOString(),
+      lastSeenAt: nowIso,
+      reps,
+      lapses,
+      correct,
+      wrong,
+    };
 
     if (existing.length) {
-      await db.update(schema.flashcardProgress).set({
-        box: next.box, ease: next.ease, interval: next.interval, dueAt,
-        lastSeenAt: nowIso, reps, lapses: next.lapses, correct, wrong,
-      }).where(eq(schema.flashcardProgress.id, base.id));
+      await db.update(schema.flashcardProgress).set(values).where(eq(schema.flashcardProgress.id, base.id));
     } else {
       await db.insert(schema.flashcardProgress).values({
         id: uuid(), itemType, itemId,
-        box: next.box, ease: next.ease, interval: next.interval, dueAt,
-        lastSeenAt: nowIso, reps, lapses: next.lapses, correct, wrong,
+        ...values,
       });
     }
 
     await bumpDailyActivity(1);
-    const totalStat = await db.select().from(schema.stats).where(eq(schema.stats.key, "totalReviewed"));
-    if (totalStat.length) await db.update(schema.stats).set({ value: totalStat[0].value + 1, updatedAt: nowIso }).where(eq(schema.stats.key, "totalReviewed"));
-    else await db.insert(schema.stats).values({ id: uuid(), key: "totalReviewed", value: 1, updatedAt: nowIso });
+    await bumpStat("totalReviewed", 1);
+    await bumpStat("xp", xpGain);
 
-    return NextResponse.json({ ok: true, next: { ...next, dueAt } });
+    return NextResponse.json({
+      ok: true,
+      next: {
+        stability: Math.round(next.stability * 100) / 100,
+        difficulty: Math.round(next.difficulty * 100) / 100,
+        interval: intervalDays,
+        intervalLabel: describeInterval(next.interval),
+        dueAt: new Date(next.dueAt).toISOString(),
+        learning: next.learning,
+        r: Math.round(next.retrievability * 100) / 100,
+      },
+      xpGain,
+    });
   }
 
   return NextResponse.json({ error: "unknown action" }, { status: 400 });

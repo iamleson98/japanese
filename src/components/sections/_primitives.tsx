@@ -108,6 +108,14 @@ export function LevelBadge({ level }: { level: string }) {
   );
 }
 
+const LEVEL_BAR: Record<string, string> = {
+  N5: "bg-emerald-500",
+  N4: "bg-amber-500",
+  N3: "bg-rose-500",
+  N2: "bg-sky-500",
+  N1: "bg-violet-500",
+};
+
 export function LevelPathCard({
   level,
   learned,
@@ -126,12 +134,7 @@ export function LevelPathCard({
   const pct = total > 0 ? Math.round((learned / total) * 100) : 0;
   return (
     <div className="relative rounded-2xl border border-border bg-card p-5 sm:p-6 overflow-hidden">
-      <div
-        className={cn(
-          "absolute inset-x-0 top-0 h-1",
-          level === "N5" ? "bg-emerald-500" : level === "N4" ? "bg-amber-500" : "bg-rose-500"
-        )}
-      />
+      <div className={cn("absolute inset-x-0 top-0 h-1", LEVEL_BAR[level] ?? "bg-slate-500")} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -151,10 +154,7 @@ export function LevelPathCard({
         </div>
         <div className="h-2 rounded-full bg-muted overflow-hidden">
           <div
-            className={cn(
-              "h-full rounded-full transition-all",
-              level === "N5" ? "bg-emerald-500" : level === "N4" ? "bg-amber-500" : "bg-rose-500"
-            )}
+            className={cn("h-full rounded-full transition-all", LEVEL_BAR[level] ?? "bg-slate-500")}
             style={{ width: `${pct}%` }}
           />
         </div>

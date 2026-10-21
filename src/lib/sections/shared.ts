@@ -1,11 +1,13 @@
-export type Level = "N5" | "N4" | "N3" | "all";
+export type Level = "N5" | "N4" | "N3" | "N2" | "N1" | "all";
 
-export const LEVELS: Level[] = ["N5", "N4", "N3"];
+export const LEVELS: Level[] = ["N5", "N4", "N3", "N2", "N1"];
 
 export const LEVEL_LABEL: Record<string, string> = {
   N5: "N5 · Beginner",
   N4: "N4 · Elementary",
   N3: "N3 · Intermediate",
+  N2: "N2 · Pre-advanced",
+  N1: "N1 · Advanced",
   all: "All Levels",
 };
 
@@ -13,6 +15,8 @@ export const LEVEL_DESC: Record<string, string> = {
   N5: "First steps — hiragana, katakana, basic greetings, simple verbs and particles.",
   N4: "Elementary — everyday conversation, conditionals, giving & receiving, polite nuance.",
   N3: "Intermediate — conjecture, nominalizers, complex sentences, abstract vocabulary.",
+  N2: "Pre-advanced — newspapers, formal speech, nuanced connectors and keigo.",
+  N1: "Advanced — literary Japanese, dense academic vocabulary, classical grammar.",
 };
 
 // Tailwind class fragments for level badges
@@ -20,6 +24,8 @@ export const LEVEL_BADGE: Record<string, string> = {
   N5: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 ring-1 ring-emerald-300/50",
   N4: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 ring-1 ring-amber-300/50",
   N3: "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 ring-1 ring-rose-300/50",
+  N2: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 ring-1 ring-sky-300/50",
+  N1: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 ring-1 ring-violet-300/50",
   all: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 ring-1 ring-slate-300/50",
 };
 
@@ -27,6 +33,8 @@ export const LEVEL_DOT: Record<string, string> = {
   N5: "bg-emerald-500",
   N4: "bg-amber-500",
   N3: "bg-rose-500",
+  N2: "bg-sky-500",
+  N1: "bg-violet-500",
   all: "bg-slate-400",
 };
 
@@ -34,6 +42,8 @@ export function levelColor(level: string) {
   if (level === "N5") return "emerald";
   if (level === "N4") return "amber";
   if (level === "N3") return "rose";
+  if (level === "N2") return "sky";
+  if (level === "N1") return "violet";
   return "slate";
 }
 

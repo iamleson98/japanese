@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const category = searchParams.get("category");
 
   let rows = await db.select().from(schema.vocabulary);
-  if (level && ["N5", "N4", "N3"].includes(level)) {
+  if (level && ["N5", "N4", "N3", "N2", "N1"].includes(level)) {
     rows = rows.filter((v) => v.level === level);
   }
   if (category) {

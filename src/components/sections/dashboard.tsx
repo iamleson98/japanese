@@ -22,17 +22,45 @@ import {
   Route,
   ListChecks,
   Volume2,
+  Headphones,
+  Trophy,
+  Zap,
+  Gauge,
+  Keyboard,
 } from "@/components/app/imports";
-import { SectionHeader, StatCard, LevelPathCard } from "./_primitives";
+import { StatCard, LevelPathCard } from "./_primitives";
 import { LEVEL_DESC, speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
 import { getFlashcardsHref, getSectionHref } from "@/lib/routes";
 
 type Dash = {
-  counts: { kana: number; vocabulary: number; grammar: number; kanji: number; counters: number; conjugations: number; resources: number };
-  progress: { learned: number; due: number; totalReviewed: number; streak: number; byType: Record<string, number>; learnedByLevel: Record<string, number>; totalByLevel: Record<string, number> };
+  counts: { kana: number; vocabulary: number; grammar: number; kanji: number; counters: number; conjugations: number; resources: number; passages: number };
+  progress: {
+    learned: number; due: number; totalReviewed: number; streak: number;
+    xp: number; dailyGoal: number; todayActivity: number;
+    byType: Record<string, number>;
+    learnedByLevel: Record<string, number>; totalByLevel: Record<string, number>;
+    trueRetention: number | null; avgRecall: number | null;
+  };
+  forecast: { day: number; label: string; count: number }[];
   activity: { date: string; count: number }[];
+  recentMock: { level: string; totalScore: number; passed: boolean; createdAt: string }[];
 };
+
+const LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
+
+function xpLevel(xp: number): { level: number; into: number; span: number } {
+  // each level costs 100 XP more than the last: L1=0, L2=100, L3=300, L4=600…
+  let level = 1;
+  let remaining = xp;
+  let span = 100;
+  while (remaining >= span) {
+    remaining -= span;
+    level++;
+    span += 100;
+  }
+  return { level, into: remaining, span };
+}
 
 export function DashboardSection() {
   const router = useRouter();
@@ -55,36 +83,26 @@ export function DashboardSection() {
   const due = data?.progress.due ?? 0;
   const totalReviewed = data?.progress.totalReviewed ?? 0;
   const streak = data?.progress.streak ?? 0;
+  const xp = data?.progress.xp ?? 0;
+  const goal = data?.progress.dailyGoal ?? 20;
+  const todayActivity = data?.progress.todayActivity ?? 0;
+  const xpInfo = xpLevel(xp);
+  const goalPct = Math.min(100, Math.round((todayActivity / Math.max(1, goal)) * 100));
 
-  const learnedByLevel = data?.progress.learnedByLevel ?? { N5: 0, N4: 0, N3: 0 };
-  const totalByLevel = data?.progress.totalByLevel ?? { N5: 0, N4: 0, N3: 0 };
+  const learnedByLevel = data?.progress.learnedByLevel ?? {};
+  const totalByLevel = data?.progress.totalByLevel ?? {};
 
-  const pathCards = [
-    {
-      level: "N5" as const,
-      learned: learnedByLevel.N5 ?? 0,
-      total: totalByLevel.N5 ?? 0,
-      description: LEVEL_DESC.N5,
-      onStart: () => router.push(getSectionHref("kana")),
-      onReview: () => router.push(getFlashcardsHref("vocabulary", "N5")),
-    },
-    {
-      level: "N4" as const,
-      learned: learnedByLevel.N4 ?? 0,
-      total: totalByLevel.N4 ?? 0,
-      description: LEVEL_DESC.N4,
-      onStart: () => router.push(getSectionHref("grammar")),
-      onReview: () => router.push(getFlashcardsHref("vocabulary", "N4")),
-    },
-    {
-      level: "N3" as const,
-      learned: learnedByLevel.N3 ?? 0,
-      total: totalByLevel.N3 ?? 0,
-      description: LEVEL_DESC.N3,
-      onStart: () => router.push(getSectionHref("grammar")),
-      onReview: () => router.push(getFlashcardsHref("vocabulary", "N3")),
-    },
-  ];
+  const pathCards = LEVELS.map((level) => ({
+    level,
+    learned: learnedByLevel[level] ?? 0,
+    total: totalByLevel[level] ?? 0,
+    description: LEVEL_DESC[level] ?? "",
+    onStart: () =>
+      router.push(
+        level === "N5" ? getSectionHref("kana") : level === "N4" ? getSectionHref("grammar") : getSectionHref("grammar"),
+      ),
+    onReview: () => router.push(getFlashcardsHref("vocabulary", level)),
+  }));
 
   return (
     <div>
@@ -93,29 +111,37 @@ export function DashboardSection() {
         <div className="relative p-6 sm:p-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold mb-4">
             <Sparkles className="h-3.5 w-3.5" />
-            Your path from あ to intermediate Japanese
+            Your path from あ to advanced Japanese — FSRS-powered
           </div>
           <h1 className="text-3xl sm:text-5xl font-bold tracking-tight max-w-3xl">
             Learn Japanese, <span className="font-jp">少しずつ</span>.
           </h1>
           <p className="mt-3 text-base sm:text-lg text-muted-foreground max-w-2xl">
-            A complete N5 → N3 study companion — kana, vocabulary, grammar, kanji, and
-            spaced-repetition flashcards, each linked to hand-picked YouTube lessons.
+            A complete N5 → N1 study companion — {data?.counts.vocabulary.toLocaleString() ?? "—"} words,{" "}
+            {data?.counts.grammar ?? "—"} grammar points, {data?.counts.kanji ?? "—"} kanji, listening &amp; reading
+            dojo, and a state-of-the-art spaced-repetition scheduler.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
-              onClick={() => router.push(getSectionHref("kana"))}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 transition"
-            >
-              <Type className="h-4 w-4" />
-              Start with Kana
-            </button>
-            <button
               onClick={() => router.push(getFlashcardsHref("vocabulary", null))}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold hover:bg-accent transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 transition"
             >
               <Layers3 className="h-4 w-4" />
               Review due cards {due > 0 && `(${due})`}
+            </button>
+            <button
+              onClick={() => router.push(getSectionHref("practice"))}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold hover:bg-accent transition"
+            >
+              <Headphones className="h-4 w-4" />
+              Listening &amp; Reading Dojo
+            </button>
+            <button
+              onClick={() => router.push(getSectionHref("mock-test"))}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold hover:bg-accent transition"
+            >
+              <Trophy className="h-4 w-4" />
+              JLPT Mock Test
             </button>
           </div>
         </div>
@@ -153,6 +179,95 @@ export function DashboardSection() {
         />
       </section>
 
+      {/* Daily goal + XP + forecast */}
+      <section className="grid gap-4 lg:grid-cols-3 mb-8">
+        {/* Goal ring */}
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 flex items-center gap-5">
+          <div className="relative h-28 w-28 shrink-0">
+            <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted" />
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="10"
+                strokeLinecap="round"
+                className={goalPct >= 100 ? "text-emerald-500" : "text-primary"}
+                strokeDasharray={`${(goalPct / 100) * 264} 264`}
+              />
+            </svg>
+            <div className="absolute inset-0 grid place-items-center rotate-0">
+              <div className="text-center">
+                <div className="text-2xl font-bold tabular-nums leading-none">{goalPct}%</div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">daily goal</div>
+              </div>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold flex items-center gap-1.5">
+              <Target className="h-4 w-4 text-primary" />
+              Today&apos;s goal
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground tabular-nums">{todayActivity}</span> / {goal} reviews today
+            </p>
+            {goalPct >= 100 ? (
+              <p className="mt-2 text-sm font-medium text-emerald-600 dark:text-emerald-300">
+                Goal complete — えらい！ Great work.
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                {Math.max(0, goal - todayActivity)} more to go — {due > 0 ? `${due} due now` : "learn new cards"}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* XP / level */}
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-1.5">
+              <Zap className="h-4 w-4 text-amber-500" />
+              Level {xpInfo.level}
+            </h3>
+            <span className="text-sm text-muted-foreground tabular-nums">{xp.toLocaleString()} XP</span>
+          </div>
+          <div className="mt-3 h-2.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
+              style={{ width: `${(xpInfo.into / xpInfo.span) * 100}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {xpInfo.span - xpInfo.into} XP to level {xpInfo.level + 1} · earn XP from reviews, quizzes, dojo &amp; mock
+            tests
+          </p>
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <Gauge className="h-3.5 w-3.5" />
+            {data?.progress.avgRecall != null
+              ? `Predicted recall of your deck: ${Math.round((data.progress.avgRecall ?? 0) * 100)}%`
+              : "Start reviewing to see memory predictions"}
+            {data?.progress.trueRetention != null && (
+              <span className="ml-1">
+                · actual: {Math.round((data.progress.trueRetention ?? 0) * 100)}%
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Forecast */}
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <h3 className="font-semibold flex items-center gap-1.5 mb-1">
+            <Calendar className="h-4 w-4 text-primary" />
+            Review forecast
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">Cards coming due, next 7 days</p>
+          <ForecastChart data={data?.forecast ?? []} />
+        </div>
+      </section>
+
       {/* Activity chart */}
       <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -172,10 +287,10 @@ export function DashboardSection() {
         <div className="flex items-end justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold">Learning path</h2>
-            <p className="text-sm text-muted-foreground">JLPT levels, beginner to intermediate</p>
+            <p className="text-sm text-muted-foreground">JLPT levels, beginner to advanced</p>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {pathCards.map((p) => (
             <LevelPathCard key={p.level} {...p} />
           ))}
@@ -187,6 +302,20 @@ export function DashboardSection() {
         <WordOfDay />
         <div className="lg:col-span-2 grid gap-4 sm:grid-cols-2">
           <QuickLink
+            icon={Headphones}
+            label="Listening & Reading"
+            jp="聴読"
+            desc={`${data?.counts.passages ?? "—"} graded passages with questions`}
+            onClick={() => router.push(getSectionHref("practice"))}
+          />
+          <QuickLink
+            icon={Trophy}
+            label="Mock Test"
+            jp="模試"
+            desc="Timed 3-section JLPT exam, 180 pts"
+            onClick={() => router.push(getSectionHref("mock-test"))}
+          />
+          <QuickLink
             icon={Route}
             label="Lessons"
             jp="コース"
@@ -194,25 +323,11 @@ export function DashboardSection() {
             onClick={() => router.push(getSectionHref("lessons"))}
           />
           <QuickLink
-            icon={ListChecks}
-            label="Quiz"
+            icon={Keyboard}
+            label="Quiz + Typing"
             jp="クイズ"
-            desc="Test yourself JLPT-style"
+            desc="MCQ or type-the-answer drills"
             onClick={() => router.push(getSectionHref("quiz"))}
-          />
-          <QuickLink
-            icon={Repeat}
-            label="Conjugation"
-            jp="活用"
-            desc={`${data?.counts.conjugations ?? "—"} verb & adj paradigms`}
-            onClick={() => router.push(getSectionHref("conjugations"))}
-          />
-          <QuickLink
-            icon={Hash}
-            label="Counters"
-            jp="助数詞"
-            desc={`${data?.counts.counters ?? "—"} counters with sound changes`}
-            onClick={() => router.push(getSectionHref("counters"))}
           />
         </div>
       </section>
@@ -230,7 +345,7 @@ export function DashboardSection() {
           icon={BookOpen}
           label="Vocabulary"
           jp="単語"
-          desc={`${data?.counts.vocabulary ?? "—"} words across N5–N3`}
+          desc={`${data?.counts.vocabulary.toLocaleString() ?? "—"} words N5–N1`}
           onClick={() => router.push(getSectionHref("vocabulary"))}
         />
         <QuickLink
@@ -254,7 +369,7 @@ export function DashboardSection() {
 
 function WordOfDay() {
   const [word, setWord] = React.useState<{
-    word: string; reading: string; meaning: string; exampleJp: string | null; exampleEn: string | null; level: string;
+    word: string; reading: string; meaning: string; viMeaning?: string | null; exampleJp: string | null; exampleEn: string | null; level: string;
   } | null>(null);
 
   React.useEffect(() => {
@@ -284,6 +399,7 @@ function WordOfDay() {
         </button>
       </div>
       <p className="mt-1 text-sm text-foreground/90">{word.meaning}</p>
+      {word.viMeaning && <p className="text-xs text-muted-foreground italic mt-0.5">{word.viMeaning}</p>}
       {word.exampleJp && (
         <div className="mt-3 text-sm">
           <Furigana text={word.exampleJp} reading={word.reading} className="leading-snug" />
@@ -352,6 +468,35 @@ function ActivityChart({ data }: { data: { date: string; count: number }[] }) {
               />
             </div>
             <div className="text-[11px] font-medium text-muted-foreground">{label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ForecastChart({ data }: { data: { day: number; label: string; count: number }[] }) {
+  const max = Math.max(1, ...data.map((d) => d.count));
+  return (
+    <div className="flex items-end gap-1.5 h-24">
+      {data.map((d) => {
+        const h = Math.round((d.count / max) * 100);
+        return (
+          <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+            <div className="text-[10px] tabular-nums text-muted-foreground">{d.count > 0 ? d.count : ""}</div>
+            <div className="w-full flex-1 flex items-end">
+              <div
+                className={cn(
+                  "w-full rounded transition-all",
+                  d.day === 0 ? "bg-rose-400" : "bg-sky-300 dark:bg-sky-700 hover:bg-sky-400"
+                )}
+                style={{ height: `${Math.max(2, h)}%` }}
+                title={`${d.day === 0 ? "Today" : d.label}: ${d.count} due`}
+              />
+            </div>
+            <div className="text-[10px] font-medium text-muted-foreground">
+              {d.day === 0 ? "Today" : d.label.slice(0, 2)}
+            </div>
           </div>
         );
       })}

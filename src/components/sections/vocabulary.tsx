@@ -23,6 +23,7 @@ type Vocab = {
   word: string;
   reading: string;
   meaning: string;
+  viMeaning: string | null;
   romaji: string | null;
   level: string;
   category: string;
@@ -48,6 +49,7 @@ export function VocabularySection() {
   const [added, setAdded] = React.useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = React.useState(60);
   const romajiMode = useApp((s) => s.romajiMode);
+  const showVietnamese = useApp((s) => s.showVietnamese);
 
   // Load vocab for the level
   React.useEffect(() => {
@@ -218,6 +220,7 @@ export function VocabularySection() {
                 added={added.has(v.id)}
                 onAdd={() => addToDeck(v)}
                 showRomaji={romajiMode !== "never"}
+                showVi={showVietnamese}
               />
             ))}
           </div>
@@ -269,11 +272,13 @@ function VocabCard({
   added,
   onAdd,
   showRomaji,
+  showVi,
 }: {
   v: Vocab;
   added: boolean;
   onAdd: () => void;
   showRomaji: boolean;
+  showVi: boolean;
 }) {
   const [showExample2, setShowExample2] = React.useState(false);
   return (
@@ -298,6 +303,9 @@ function VocabCard({
       </div>
 
       <p className="mt-2 text-sm font-medium">{v.meaning}</p>
+      {showVi && v.viMeaning && (
+        <p className="text-xs text-muted-foreground italic mt-0.5">{v.viMeaning}</p>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {v.pos && (

@@ -21,6 +21,8 @@ import {
   Repeat,
   Route,
   ListChecks,
+  Headphones,
+  Trophy,
   cn,
   warmupSpeech,
   speakJapanese,
@@ -36,6 +38,8 @@ const NAV: { id: SectionId; label: string; jp: string; icon: React.ElementType }
   { id: "conjugations", label: "Conjugation", jp: "活用", icon: Repeat },
   { id: "counters", label: "Counters", jp: "助数詞", icon: Hash },
   { id: "flashcards", label: "Flashcards", jp: "復習", icon: Layers3 },
+  { id: "practice", label: "Listening & Reading", jp: "聴読", icon: Headphones },
+  { id: "mock-test", label: "Mock Test", jp: "模試", icon: Trophy },
   { id: "quiz", label: "Quiz", jp: "クイズ", icon: ListChecks },
   { id: "resources", label: "Resources", jp: "動画", icon: Youtube },
 ];
@@ -117,7 +121,7 @@ function Header({
             </span>
             <span className="hidden sm:flex flex-col leading-tight">
               <span className="font-semibold text-foreground tracking-tight">Nihongo Path</span>
-              <span className="text-[11px] text-muted-foreground font-jp">日本語パス · N5→N3</span>
+              <span className="text-[11px] text-muted-foreground font-jp">日本語パス · N5→N1</span>
             </span>
           </Link>
 
@@ -235,11 +239,17 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
   const setRomajiMode = useApp((s) => s.setRomajiMode);
   const ttsRate = useApp((s) => s.ttsRate);
   const setTtsRate = useApp((s) => s.setTtsRate);
+  const showVietnamese = useApp((s) => s.showVietnamese);
+  const setShowVietnamese = useApp((s) => s.setShowVietnamese);
+  const dailyGoal = useApp((s) => s.dailyGoal);
+  const setDailyGoal = useApp((s) => s.setDailyGoal);
+  const desiredRetention = useApp((s) => s.desiredRetention);
+  const setDesiredRetention = useApp((s) => s.setDesiredRetention);
 
   return (
     <>
       <div className="fixed inset-0 z-30" onClick={onClose} />
-      <div className="absolute right-4 sm:right-6 top-16 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover shadow-lg np-fade-in">
+      <div className="absolute right-4 sm:right-6 top-16 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover shadow-lg np-fade-in overflow-y-auto max-h-[calc(100vh-6rem)] np-scroll">
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm">Learning settings</h3>
@@ -276,6 +286,20 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             </p>
           </Setting>
 
+          <Setting label="Vietnamese meanings (Nghĩa tiếng Việt)">
+            <Segmented
+              value={showVietnamese ? "on" : "off"}
+              onChange={(v) => setShowVietnamese(v === "on")}
+              options={[
+                { value: "on", label: "Hiện" },
+                { value: "off", label: "Ẩn" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Show Vietnamese translations alongside English where available.
+            </p>
+          </Setting>
+
           <Setting label="Audio speed">
             <Segmented
               value={String(ttsRate)}
@@ -292,6 +316,37 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             >
               Test audio ▶
             </button>
+          </Setting>
+
+          <Setting label="Daily goal (reviews/day)">
+            <Segmented
+              value={String(dailyGoal)}
+              onChange={(v) => setDailyGoal(Number(v))}
+              options={[
+                { value: "10", label: "10" },
+                { value: "20", label: "20" },
+                { value: "40", label: "40" },
+                { value: "80", label: "80" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Consistency beats volume — a daily streak at this pace compounds fast.
+            </p>
+          </Setting>
+
+          <Setting label="FSRS target retention">
+            <Segmented
+              value={String(desiredRetention)}
+              onChange={(v) => setDesiredRetention(Number(v))}
+              options={[
+                { value: "0.85", label: "85%" },
+                { value: "0.9", label: "90%" },
+                { value: "0.95", label: "95%" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Lower = fewer reviews, faster progress (a bit more forgetting). Higher = more reviews, stronger memory.
+            </p>
           </Setting>
         </div>
       </div>
