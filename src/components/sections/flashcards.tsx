@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Sparkles,
   Eye,
+  Star,
 } from "@/components/app/imports";
 import { SectionHeader, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
@@ -27,7 +28,7 @@ import { getFlashcardsHref, getSectionHref, isFlashcardRouteType } from "@/lib/r
 import { useApp } from "@/lib/store";
 import { schedule, qualityToGrade, describeInterval } from "@/lib/fsrs";
 
-type CardType = "vocabulary" | "kana" | "kanji" | "grammar";
+type CardType = "vocabulary" | "kana" | "kanji" | "grammar" | "sentence";
 
 const TYPE_META: Record<
   CardType,
@@ -37,6 +38,7 @@ const TYPE_META: Record<
   kana: { label: "Kana", jp: "仮名", icon: Type, desc: "Hiragana & katakana" },
   kanji: { label: "Kanji", jp: "漢字", icon: GraduationCap, desc: "Characters & readings" },
   grammar: { label: "Grammar", jp: "文法", icon: Languages, desc: "Patterns & structures" },
+  sentence: { label: "Mined sentences", jp: "例文", icon: Star, desc: "Sentences you saved ⭐" },
 };
 
 type DueCard = {
@@ -56,8 +58,12 @@ type DueCard = {
   title?: string;
   structure?: string;
   explanation?: string;
+  textJp?: string;
+  textEn?: string;
+  textVi?: string | null;
   exampleJp?: string | null;
   exampleEn?: string | null;
+  viMeaning?: string | null;
   progress?: { box: number; reps: number; lapses: number; stability?: number; difficulty?: number; lastSeenAt?: string | null } | null;
 };
 
@@ -69,7 +75,7 @@ export function FlashcardsSection() {
   const routeTypeParam = searchParams.get("type");
   const routeType = isFlashcardRouteType(routeTypeParam) ? routeTypeParam : null;
   const routeLevel = searchParams.get("level");
-  const effectiveLevel = routeType === "kana" ? "N5" : routeLevel ?? "N5";
+  const effectiveLevel = routeType === "kana" || routeType === "sentence" ? "N5" : routeLevel ?? "N5";
 
   const [phase, setPhase] = React.useState<Phase>("setup");
   const [type, setType] = React.useState<CardType>(routeType ?? "vocabulary");
@@ -83,7 +89,7 @@ export function FlashcardsSection() {
 
   const autoStarted = React.useRef(false);
   const startSession = React.useCallback(async (t: CardType, lvl: string) => {
-    const levelParam = t === "kana" ? "" : `&level=${encodeURIComponent(lvl)}`;
+    const levelParam = t === "kana" || t === "sentence" ? "" : `&level=${encodeURIComponent(lvl)}`;
     const url = `/api/flashcards?type=${t}${levelParam}&limit=20`;
     try {
       const r = await fetch(url);
@@ -168,7 +174,7 @@ export function FlashcardsSection() {
       setType={setType}
       setLevel={setLevel}
       onStart={() => {
-        router.push(getFlashcardsHref(type, type === "kana" ? null : level));
+        router.push(getFlashcardsHref(type, type === "kana" || type === "sentence" ? null : level));
         void startSession(type, level);
       }}
       onResetProgress={async () => {
@@ -209,7 +215,7 @@ function SetupScreen({
         description="Pick a deck and level, then review due cards and a few new ones. Mark how well you knew each card — the system schedules the next review automatically."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         {(Object.keys(TYPE_META) as CardType[]).map((t) => {
           const meta = TYPE_META[t];
           const Icon = meta.icon;
@@ -246,7 +252,7 @@ function SetupScreen({
         })}
       </div>
 
-      {type !== "kana" && (
+      {type !== "kana" && type !== "sentence" && (
         <div className="mb-6">
           <div className="text-sm font-medium mb-2">Level</div>
           <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
@@ -316,27 +322,43 @@ function ReviewSession({
   onExit: () => void;
 }) {
   const desiredRetention = useApp((s) => s.desiredRetention);
+  const reverseChallenge = useApp((s) => s.reverseChallenge);
   const [queue, setQueue] = React.useState<DueCard[]>(cards);
   const [idx, setIdx] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
   const [correct, setCorrect] = React.useState(0);
   const [wrong, setWrong] = React.useState(0);
   const [reviewing, setReviewing] = React.useState(false);
+  // Reverse-recall decisions (decided once per card, stable across re-renders)
+  const reversedMap = React.useRef(new Map<string, boolean>());
 
   const current = queue[idx];
+
+  const reversed = React.useMemo(() => {
+    if (!current || type !== "vocabulary" || !reverseChallenge) return false;
+    const p = current.progress;
+    // Mature cards only: stability >= 21 days and seen at least twice
+    if ((p?.stability ?? 0) < 21 || (p?.reps ?? 0) < 2) return false;
+    let r = reversedMap.current.get(current.id);
+    if (r === undefined) {
+      r = Math.random() < 0.4;
+      reversedMap.current.set(current.id, r);
+    }
+    return r;
+  }, [current, type, reverseChallenge]);
 
   React.useEffect(() => {
     // speak front on new card (only for jp text)
     setFlipped(false);
     if (current) {
-      const frontText = getFrontText(type, current);
+      const frontText = getFrontText(type, current, reversed);
       if (frontText && /[\u3040-\u30ff\u4e00-\u9fff]/.test(frontText)) {
         // slight delay so flip resets
         const t = setTimeout(() => speakJapanese(frontText), 120);
         return () => clearTimeout(t);
       }
     }
-  }, [idx, type, current]);
+  }, [idx, type, current, reversed]);
 
   async function grade(quality: "again" | "hard" | "good" | "easy") {
     if (!current || reviewing) return;
@@ -453,7 +475,7 @@ function ReviewSession({
 
       {/* Card */}
       <div className="max-w-2xl mx-auto">
-        <Flashcard type={type} card={current} flipped={flipped} onFlip={() => setFlipped((f) => !f)} />
+        <Flashcard type={type} card={current} reversed={reversed} flipped={flipped} onFlip={() => setFlipped((f) => !f)} />
 
         {!flipped ? (
           <div className="mt-6 text-center">
@@ -513,22 +535,25 @@ function GradeBtn({
   );
 }
 
-function getFrontText(type: CardType, card: DueCard): string {
-  if (type === "vocabulary") return card.word ?? "";
+function getFrontText(type: CardType, card: DueCard, reversed = false): string {
+  if (type === "vocabulary") return reversed ? "" : card.word ?? "";
   if (type === "kana") return card.char ?? "";
   if (type === "kanji") return card.character ?? "";
   if (type === "grammar") return card.title ?? "";
+  if (type === "sentence") return card.textJp ?? "";
   return "";
 }
 
 function Flashcard({
   type,
   card,
+  reversed,
   flipped,
   onFlip,
 }: {
   type: CardType;
   card: DueCard;
+  reversed: boolean;
   flipped: boolean;
   onFlip: () => void;
 }) {
@@ -537,18 +562,28 @@ function Flashcard({
       <div className={cn("flip-card-inner h-full", flipped && "is-flipped")}>
         {/* Front */}
         <div className="flip-face absolute inset-0 rounded-2xl border border-border bg-card shadow-sm grid place-items-center p-6">
-          <CardFront type={type} card={card} />
+          <CardFront type={type} card={card} reversed={reversed} />
         </div>
         {/* Back */}
         <div className="flip-face flip-back absolute inset-0 rounded-2xl border border-primary/30 bg-primary/5 shadow-sm p-6 overflow-auto np-scroll">
-          <CardBack type={type} card={card} />
+          <CardBack type={type} card={card} reversed={reversed} />
         </div>
       </div>
     </div>
   );
 }
 
-function CardFront({ type, card }: { type: CardType; card: DueCard }) {
+function CardFront({ type, card, reversed }: { type: CardType; card: DueCard; reversed: boolean }) {
+  if (type === "vocabulary" && reversed) {
+    return (
+      <div className="text-center">
+        <div className="text-3xl font-semibold max-w-md">{card.meaning}</div>
+        <div className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">
+          recall the Japanese word ↺
+        </div>
+      </div>
+    );
+  }
   if (type === "vocabulary") {
     return (
       <div className="text-center">
@@ -580,6 +615,16 @@ function CardFront({ type, card }: { type: CardType; card: DueCard }) {
       </div>
     );
   }
+  if (type === "sentence") {
+    return (
+      <div className="text-center">
+        <div className="font-jp text-2xl leading-relaxed max-w-lg">{card.textJp}</div>
+        <div className="mt-4 text-xs uppercase tracking-wide text-muted-foreground">
+          Translation?
+        </div>
+      </div>
+    );
+  }
   // grammar
   return (
     <div className="text-center">
@@ -594,11 +639,26 @@ function CardFront({ type, card }: { type: CardType; card: DueCard }) {
   );
 }
 
-function CardBack({ type, card }: { type: CardType; card: DueCard }) {
+function CardBack({ type, card, reversed }: { type: CardType; card: DueCard; reversed: boolean }) {
+  const showVi = useApp((s) => s.showVietnamese);
   const speak = (text: string) => (e: React.MouseEvent) => {
     e.stopPropagation();
     speakJapanese(text);
   };
+  if (type === "vocabulary" && reversed) {
+    return (
+      <div className="text-center">
+        <div className="font-jp text-5xl font-semibold">{card.word}</div>
+        <div className="font-jp text-lg text-muted-foreground mt-2">{card.reading}</div>
+        <button
+          onClick={speak(card.word ?? "")}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-background border border-border px-3 py-1.5 text-sm hover:bg-accent"
+        >
+          <Volume2 className="h-4 w-4" /> Hear it
+        </button>
+      </div>
+    );
+  }
   if (type === "vocabulary") {
     return (
       <div>
@@ -612,6 +672,9 @@ function CardBack({ type, card }: { type: CardType; card: DueCard }) {
           </button>
         </div>
         <div className="mt-3 text-lg font-medium">{card.meaning}</div>
+        {showVi && card.viMeaning && (
+          <div className="text-sm text-muted-foreground mt-0.5">{card.viMeaning}</div>
+        )}
         {card.exampleJp && (
           <div className="mt-4 rounded-lg bg-background p-3 border border-border">
             <div className="flex items-start gap-2">
@@ -670,6 +733,22 @@ function CardBack({ type, card }: { type: CardType; card: DueCard }) {
             {card.exampleMean && <div className="text-sm mt-0.5">{card.exampleMean}</div>}
           </div>
         )}
+      </div>
+    );
+  }
+  if (type === "sentence") {
+    return (
+      <div className="text-center py-4">
+        <div className="text-xl font-semibold max-w-md mx-auto">{card.textEn}</div>
+        {showVi && card.textVi && (
+          <div className="text-sm text-muted-foreground mt-1">{card.textVi}</div>
+        )}
+        <button
+          onClick={speak(card.textJp ?? "")}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-background border border-border px-3 py-1.5 text-sm hover:bg-accent"
+        >
+          <Volume2 className="h-4 w-4" /> Replay sentence
+        </button>
       </div>
     );
   }

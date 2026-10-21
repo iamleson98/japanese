@@ -27,6 +27,7 @@ import {
   Zap,
   Gauge,
   Keyboard,
+  Clock,
 } from "@/components/app/imports";
 import { StatCard, LevelPathCard } from "./_primitives";
 import { LEVEL_DESC, speakJapanese } from "@/lib/sections/shared";
@@ -65,6 +66,12 @@ function xpLevel(xp: number): { level: number; into: number; span: number } {
 export function DashboardSection() {
   const router = useRouter();
   const [data, setData] = React.useState<Dash | null>(null);
+  const [session, setSession] = React.useState<{
+    minutes: number;
+    reviews: number;
+    newCards: number;
+    completed: boolean;
+  } | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   const load = React.useCallback(() => {
@@ -73,6 +80,17 @@ export function DashboardSection() {
       .then((r) => r.json())
       .then((d) => setData(d))
       .finally(() => setLoading(false));
+    fetch("/api/smart-session?newPerDay=10")
+      .then((r) => r.json())
+      .then((d) =>
+        setSession({
+          minutes: d?.plan?.minutes ?? 12,
+          reviews: Math.min(d?.plan?.reviews?.total ?? 0, 40),
+          newCards: d?.plan?.newCards?.count ?? 0,
+          completed: Boolean(d?.today?.completed),
+        }),
+      )
+      .catch(() => {});
   }, []);
 
   React.useEffect(() => {
@@ -121,20 +139,41 @@ export function DashboardSection() {
             {data?.counts.grammar ?? "—"} grammar points, {data?.counts.kanji ?? "—"} kanji, listening &amp; reading
             dojo, and a state-of-the-art spaced-repetition scheduler.
           </p>
+          {/* Smart session summary chips */}
+          <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-background/70 dark:bg-background/40 border border-border px-3 py-1 font-medium">
+              <Brain className="h-3.5 w-3.5 text-primary" />
+              {session ? `${session.reviews} reviews` : "— reviews"}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-background/70 dark:bg-background/40 border border-border px-3 py-1 font-medium">
+              <Layers3 className="h-3.5 w-3.5 text-primary" />
+              {session ? `${session.newCards} new` : "— new"}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-background/70 dark:bg-background/40 border border-border px-3 py-1 font-medium">
+              <Languages className="h-3.5 w-3.5 text-primary" />
+              grammar · dojo · quiz
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-background/70 dark:bg-background/40 border border-border px-3 py-1 font-medium">
+              <Clock className="h-3.5 w-3.5 text-primary" />
+              ~{session ? session.minutes : 12} min
+            </span>
+          </div>
+
           <div className="mt-6 flex flex-wrap gap-3">
             <button
+              onClick={() => router.push(getSectionHref("smart-study"))}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-90 transition"
+            >
+              <Zap className="h-5 w-5" />
+              {session?.completed ? "Study more" : "Start today's session"}
+              {due > 0 && !session?.completed ? ` · ${due} due` : ""}
+            </button>
+            <button
               onClick={() => router.push(getFlashcardsHref("vocabulary", null))}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold hover:bg-accent transition"
             >
               <Layers3 className="h-4 w-4" />
               Review due cards {due > 0 && `(${due})`}
-            </button>
-            <button
-              onClick={() => router.push(getSectionHref("practice"))}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold hover:bg-accent transition"
-            >
-              <Headphones className="h-4 w-4" />
-              Listening &amp; Reading Dojo
             </button>
             <button
               onClick={() => router.push(getSectionHref("mock-test"))}
@@ -144,6 +183,9 @@ export function DashboardSection() {
               JLPT Mock Test
             </button>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground max-w-xl">
+            One guided session — reviews, new words, grammar, listening with shadowing, and a quiz, interleaved in the order memory research says works best.
+          </p>
         </div>
       </section>
 

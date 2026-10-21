@@ -20,6 +20,8 @@ import {
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
+import { ShadowPlayer } from "@/components/app/shadow-player";
+import { MineButton } from "@/components/app/mine-button";
 import { useApp } from "@/lib/store";
 
 type PassageListItem = {
@@ -344,12 +346,25 @@ function PassagePlayer({ passage, onExit }: { passage: PassageDetail; onExit: ()
               reading={passage.reading}
               className="font-jp text-xl sm:text-2xl leading-relaxed tracking-wide"
             />
-            <button
-              onClick={() => setShowTranslation(!showTranslation)}
-              className="mt-4 text-sm text-primary hover:underline"
-            >
-              {showTranslation ? "Hide translation" : "Show translation"}
-            </button>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={() => setShowTranslation(!showTranslation)}
+                className="text-sm text-primary hover:underline"
+              >
+                {showTranslation ? "Hide translation" : "Show translation"}
+              </button>
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <MineButton
+                  textJp={passage.jp}
+                  textEn={passage.en}
+                  textVi={passage.vi}
+                  reading={passage.reading}
+                  sourceType="passage"
+                  sourceId={passage.id}
+                />
+                mine passage
+              </span>
+            </div>
             {showTranslation && (
               <div className="mt-3 space-y-2 text-sm text-muted-foreground border-l-2 border-primary/30 pl-4">
                 {passage.en && <p>{passage.en}</p>}
@@ -456,6 +471,17 @@ function PassagePlayer({ passage, onExit }: { passage: PassageDetail; onExit: ()
             </button>
           )}
         </div>
+      </div>
+
+      {/* Shadowing practice — listen, repeat aloud, self-monitor (research: fluency + prosody) */}
+      <div className="mt-6">
+        <ShadowPlayer
+          text={passage.jp}
+          reading={passage.reading}
+          translation={passage.en}
+          translationVi={passage.vi}
+          sourceId={passage.id}
+        />
       </div>
     </div>
   );

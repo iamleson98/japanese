@@ -89,4 +89,5 @@ export {
   Play,
   Pause,
   Flag,
+  Mic,
 } from "lucide-react";

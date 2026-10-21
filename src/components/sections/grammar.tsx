@@ -21,6 +21,7 @@ import {
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
+import { MineButton } from "@/components/app/mine-button";
 import { getFlashcardsHref } from "@/lib/routes";
 import { toast } from "sonner";
 
@@ -223,7 +224,7 @@ function GrammarCard({
               <h4 className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Examples ({examples.length}, easy → hard)</h4>
               <div className="space-y-2.5">
                 {examples.map((ex, i) => (
-                  <ExampleRow key={i} ex={ex} />
+                  <ExampleRow key={i} ex={ex} grammarId={g.id} />
                 ))}
               </div>
             </div>
@@ -267,7 +268,7 @@ function GrammarCard({
   );
 }
 
-function ExampleRow({ ex }: { ex: Example }) {
+function ExampleRow({ ex, grammarId }: { ex: Example; grammarId: string }) {
   const diffColor =
     ex.difficulty === "easy"
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -290,6 +291,12 @@ function ExampleRow({ ex }: { ex: Example }) {
             >
               <Volume2 className="h-4 w-4" />
             </button>
+            <MineButton
+              textJp={ex.jp}
+              textEn={ex.en}
+              sourceType="grammar"
+              sourceId={`${grammarId}-${ex.jp.slice(0, 12)}`}
+            />
           </div>
           <p className="text-xs text-muted-foreground mt-1">{ex.en}</p>
           {ex.note && <p className="text-[11px] text-primary mt-1 italic">💡 {ex.note}</p>}

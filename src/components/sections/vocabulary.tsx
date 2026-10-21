@@ -15,6 +15,7 @@ import {
 import { SectionHeader, LevelTabs, LevelBadge, EmptyState } from "./_primitives";
 import { speakJapanese } from "@/lib/sections/shared";
 import { Furigana } from "@/components/app/furigana";
+import { MineButton } from "@/components/app/mine-button";
 import { useApp } from "@/lib/store";
 import { getFlashcardsHref } from "@/lib/routes";
 
@@ -35,6 +36,7 @@ type Vocab = {
   exampleEn: string | null;
   exampleJp2: string | null;
   exampleEn2: string | null;
+  exampleVi: string | null;
   order: number;
 };
 
@@ -338,6 +340,13 @@ function VocabCard({
             >
               <Volume2 className="h-3.5 w-3.5" />
             </button>
+            <MineButton
+              textJp={v.exampleJp}
+              textEn={v.exampleEn ?? v.meaning}
+              textVi={v.exampleVi ?? null}
+              sourceType="vocab"
+              sourceId={`${v.id}-ex1`}
+            />
           </div>
           {v.exampleEn && <p className="text-xs text-muted-foreground mt-1">{v.exampleEn}</p>}
           {v.exampleJp2 && (
@@ -352,6 +361,13 @@ function VocabCard({
             <div className="mt-1.5 pt-1.5 border-t border-border/50">
               <div className="flex items-start gap-2">
                 <Furigana text={v.exampleJp2} reading={v.reading} className="leading-snug flex-1 text-xs" />
+                <MineButton
+                  textJp={v.exampleJp2}
+                  textEn={v.exampleEn2 ?? v.meaning}
+                  textVi={v.exampleVi ?? null}
+                  sourceType="vocab"
+                  sourceId={`${v.id}-ex2`}
+                />
               </div>
               {v.exampleEn2 && <p className="text-xs text-muted-foreground mt-1">{v.exampleEn2}</p>}
             </div>

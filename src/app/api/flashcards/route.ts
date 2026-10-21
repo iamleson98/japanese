@@ -82,6 +82,13 @@ async function bumpDailyActivity(count: number) {
   }
 }
 
+const LEVEL_RANK: Record<string, number> = { N5: 0, N4: 1, N3: 2, N2: 3, N1: 4 };
+
+function levelThenOrder(a: { level: string; order: number }, b: { level: string; order: number }): number {
+  const lr = (LEVEL_RANK[a.level] ?? 9) - (LEVEL_RANK[b.level] ?? 9);
+  return lr !== 0 ? lr : a.order - b.order;
+}
+
 async function fetchItems(type: string, ids: string[]) {
   if (ids.length === 0) return [];
   if (type === "vocabulary") {
@@ -100,24 +107,36 @@ async function fetchItems(type: string, ids: string[]) {
     const rows = await db.select().from(schema.grammar);
     return rows.filter((g) => ids.includes(g.id));
   }
+  if (type === "sentence") {
+    const rows = await db.select().from(schema.minedSentence);
+    return rows.filter((s) => ids.includes(s.id));
+  }
   return [];
 }
 
 async function fetchAllItems(type: string, level: string | null) {
   if (type === "vocabulary") {
     const rows = await db.select().from(schema.vocabulary);
-    return level ? rows.filter((v) => v.level === level) : rows;
+    const filtered = level ? rows.filter((v) => v.level === level) : rows;
+    // Frequency-first: level asc (N5 = highest frequency band), then order asc
+    return filtered.sort(levelThenOrder);
   }
   if (type === "kana") {
-    return db.select().from(schema.kana);
+    const rows = await db.select().from(schema.kana);
+    return rows.sort((a, b) => a.order - b.order);
   }
   if (type === "kanji") {
     const rows = await db.select().from(schema.kanji);
-    return level ? rows.filter((k) => k.level === level) : rows;
+    const filtered = level ? rows.filter((k) => k.level === level) : rows;
+    return filtered.sort(levelThenOrder);
   }
   if (type === "grammar") {
     const rows = await db.select().from(schema.grammar);
-    return level ? rows.filter((g) => g.level === level) : rows;
+    const filtered = level ? rows.filter((g) => g.level === level) : rows;
+    return filtered.sort(levelThenOrder);
+  }
+  if (type === "sentence") {
+    return db.select().from(schema.minedSentence);
   }
   return [];
 }
@@ -127,6 +146,12 @@ export async function GET(req: Request) {
   const type = searchParams.get("type") || "vocabulary";
   const level = searchParams.get("level");
   const limit = Math.min(60, Math.max(5, Number(searchParams.get("limit") || 20)));
+  // Fine-grained caps for the guided Smart Study session:
+  //  dueLimit caps due cards (default: fill to limit), newLimit caps fresh cards (default: fill to limit)
+  const dueLimitRaw = searchParams.get("dueLimit");
+  const newLimitRaw = searchParams.get("newLimit");
+  const dueCap = dueLimitRaw !== null ? Math.min(60, Math.max(0, Number(dueLimitRaw))) : limit;
+  const newCap = newLimitRaw !== null ? Math.min(60, Math.max(0, Number(newLimitRaw))) : limit;
   const nowIso = new Date().toISOString();
 
   // Due cards
@@ -135,13 +160,13 @@ export async function GET(req: Request) {
   const dueProgress = allProgress
     .filter((p) => new Date(p.dueAt).getTime() <= now)
     .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
-    .slice(0, limit);
+    .slice(0, dueCap);
   const dueIds = dueProgress.map((p) => p.itemId);
   const dueItems = await fetchItems(type, dueIds);
 
   // Fresh cards
-  const taken = dueItems.length;
-  const need = Math.max(0, limit - taken);
+  const taken = Math.min(dueItems.length, dueCap);
+  const need = Math.max(0, Math.min(newCap, limit - taken));
   let freshItems: any[] = [];
   if (need > 0) {
     const startedIds = new Set(allProgress.map((p) => p.itemId));

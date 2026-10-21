@@ -13,6 +13,7 @@ import { MockTestSection } from "@/components/sections/mock-test";
 import { PracticeSection } from "@/components/sections/practice";
 import { QuizSection } from "@/components/sections/quiz";
 import { ResourcesSection } from "@/components/sections/resources";
+import { SmartStudySection } from "@/components/sections/smart-study";
 import { VocabularySection } from "@/components/sections/vocabulary";
 import type { SectionId } from "@/lib/store";
 
@@ -21,6 +22,7 @@ export function SectionPage({ section }: { section: SectionId }) {
     <AppShell section={section}>
       <div key={section} className="np-fade-in">
         {section === "dashboard" && <DashboardSection />}
+        {section === "smart-study" && <SmartStudySection />}
         {section === "kana" && <KanaSection />}
         {section === "vocabulary" && <VocabularySection />}
         {section === "grammar" && <GrammarSection />}

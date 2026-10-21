@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 export type SectionId =
   | "dashboard"
+  | "smart-study"
   | "kana"
   | "vocabulary"
   | "grammar"
@@ -28,12 +29,16 @@ type AppState = {
   showVietnamese: boolean; // display Vietnamese meanings alongside English
   dailyGoal: number; // reviews per day (persisted server-side too)
   desiredRetention: number; // FSRS target recall probability
+  newPerDay: number; // new cards introduced per day (SRS research: 10-20 sustainable)
+  reverseChallenge: boolean; // mature cards occasionally flip to EN->JP production recall
   setFuriganaMode: (m: FuriganaMode) => void;
   setRomajiMode: (m: RomajiMode) => void;
   setTtsRate: (r: number) => void;
   setShowVietnamese: (b: boolean) => void;
   setDailyGoal: (n: number) => void;
   setDesiredRetention: (r: number) => void;
+  setNewPerDay: (n: number) => void;
+  setReverseChallenge: (b: boolean) => void;
 };
 
 const LS_KEY = "np-prefs-v2";
@@ -44,6 +49,8 @@ type Prefs = {
   showVietnamese?: boolean;
   dailyGoal?: number;
   desiredRetention?: number;
+  newPerDay?: number;
+  reverseChallenge?: boolean;
 };
 
 function loadPrefs(): Prefs {
@@ -80,6 +87,8 @@ export const useApp = create<AppState>((set, get) => ({
   showVietnamese: true,
   dailyGoal: 20,
   desiredRetention: 0.9,
+  newPerDay: 10,
+  reverseChallenge: true,
   setFuriganaMode: (m) => {
     set({ furiganaMode: m });
     savePrefs({ ...loadPrefs(), furiganaMode: m });
@@ -109,6 +118,14 @@ export const useApp = create<AppState>((set, get) => ({
   setDesiredRetention: (r) => {
     set({ desiredRetention: r });
     savePrefs({ ...loadPrefs(), desiredRetention: r });
+  },
+  setNewPerDay: (n) => {
+    set({ newPerDay: n });
+    savePrefs({ ...loadPrefs(), newPerDay: n });
+  },
+  setReverseChallenge: (b) => {
+    set({ reverseChallenge: b });
+    savePrefs({ ...loadPrefs(), reverseChallenge: b });
   },
   // Initialize from localStorage on client
   ...((typeof window !== "undefined" ? loadPrefs() : {}) as Prefs),

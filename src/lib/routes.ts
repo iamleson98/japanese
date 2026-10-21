@@ -1,9 +1,10 @@
 import type { SectionId } from "@/lib/store";
 
-export type FlashcardRouteType = "vocabulary" | "kana" | "kanji" | "grammar";
+export type FlashcardRouteType = "vocabulary" | "kana" | "kanji" | "grammar" | "sentence";
 
 export const SECTION_IDS = [
   "dashboard",
+  "smart-study",
   "kana",
   "vocabulary",
   "grammar",
@@ -18,7 +19,7 @@ export const SECTION_IDS = [
   "quiz",
 ] as const satisfies readonly SectionId[];
 
-const FLASHCARD_ROUTE_TYPES = ["vocabulary", "kana", "kanji", "grammar"] as const;
+const FLASHCARD_ROUTE_TYPES = ["vocabulary", "kana", "kanji", "grammar", "sentence"] as const;
 
 export function isSectionId(value: string): value is SectionId {
   return (SECTION_IDS as readonly string[]).includes(value);

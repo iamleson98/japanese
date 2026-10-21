@@ -23,6 +23,7 @@ import {
   ListChecks,
   Headphones,
   Trophy,
+  Zap,
   cn,
   warmupSpeech,
   speakJapanese,
@@ -30,6 +31,7 @@ import {
 
 const NAV: { id: SectionId; label: string; jp: string; icon: React.ElementType }[] = [
   { id: "dashboard", label: "Home", jp: "ホーム", icon: LayoutDashboard },
+  { id: "smart-study", label: "Study", jp: "今日の学習", icon: Zap },
   { id: "lessons", label: "Lessons", jp: "コース", icon: Route },
   { id: "kana", label: "Kana", jp: "仮名", icon: Type },
   { id: "vocabulary", label: "Vocab", jp: "単語", icon: BookOpen },
@@ -245,6 +247,10 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
   const setDailyGoal = useApp((s) => s.setDailyGoal);
   const desiredRetention = useApp((s) => s.desiredRetention);
   const setDesiredRetention = useApp((s) => s.setDesiredRetention);
+  const newPerDay = useApp((s) => s.newPerDay);
+  const setNewPerDay = useApp((s) => s.setNewPerDay);
+  const reverseChallenge = useApp((s) => s.reverseChallenge);
+  const setReverseChallenge = useApp((s) => s.setReverseChallenge);
 
   return (
     <>
@@ -346,6 +352,36 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             />
             <p className="text-[11px] text-muted-foreground mt-1.5">
               Lower = fewer reviews, faster progress (a bit more forgetting). Higher = more reviews, stronger memory.
+            </p>
+          </Setting>
+
+          <Setting label="New cards per day">
+            <Segmented
+              value={String(newPerDay)}
+              onChange={(v) => setNewPerDay(Number(v))}
+              options={[
+                { value: "5", label: "5" },
+                { value: "10", label: "10" },
+                { value: "15", label: "15" },
+                { value: "20", label: "20" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              10/day ≈ 3,650 words/year — the research-backed sweet spot for steady progress without review overload.
+            </p>
+          </Setting>
+
+          <Setting label="Reverse challenge (EN → JP)">
+            <Segmented
+              value={reverseChallenge ? "on" : "off"}
+              onChange={(v) => setReverseChallenge(v === "on")}
+              options={[
+                { value: "on", label: "On" },
+                { value: "off", label: "Off" },
+              ]}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Words you know well occasionally flip: you see the meaning and recall the Japanese word — production practice, the strongest form of retrieval.
             </p>
           </Setting>
         </div>

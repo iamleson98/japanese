@@ -249,6 +249,39 @@ export const lessonProgress = pgTable("lesson_progress", {
   updatedAt: ts("updated_at").defaultNow().notNull(),
 });
 
+// Mined sentences — real sentences the learner saved from anywhere in the app
+// (vocabulary examples, grammar examples, dojo passages) into their personal SRS deck.
+// Real-world practice: sentence mining is the #1 technique of immersion learners —
+// cards made from content you actually met are stickier than abstract word cards.
+export const minedSentence = pgTable("mined_sentence", {
+  id: v("id").primaryKey(),
+  userId: v("user_id", 50),
+  textJp: text("text_jp").notNull(),
+  reading: text("reading"), // full kana reading when available (dojo passages)
+  textEn: text("text_en").notNull(),
+  textVi: text("text_vi"),
+  sourceType: v("source_type", 30).notNull(), // vocab | grammar | passage
+  sourceId: v("source_id", 50),
+  createdAt: ts("created_at").defaultNow().notNull(),
+});
+
+// Guided daily study session log (Smart Study completion history)
+export const studySession = pgTable("study_session", {
+  id: v("id").primaryKey(),
+  userId: v("user_id", 50),
+  date: v("date", 10).notNull(), // YYYY-MM-DD local; uniqueness via unique index
+  reviewsDone: integer("reviews_done").default(0).notNull(),
+  newCardsDone: integer("new_cards_done").default(0).notNull(),
+  grammarDone: integer("grammar_done").default(0).notNull(), // 1 if grammar block completed
+  inputDone: integer("input_done").default(0).notNull(), // 1 if listening/reading block completed
+  shadowingDone: integer("shadowing_done").default(0).notNull(), // 1 if shadowed
+  quizScore: integer("quiz_score").default(0).notNull(),
+  quizTotal: integer("quiz_total").default(0).notNull(),
+  xpEarned: integer("xp_earned").default(0).notNull(),
+  durationSec: integer("duration_sec").default(0).notNull(),
+  createdAt: ts("created_at").defaultNow().notNull(),
+});
+
 // Grammar exercise attempt tracking
 export const exerciseProgress = pgTable("exercise_progress", {
   id: v("id").primaryKey(),
