@@ -174,3 +174,33 @@ Stage Summary:
 - Every kanji: onyomi/kunyomi + meaning + strokes + radical + original mnemonic + example word.
 - Every grammar point: structure + meaning + long rule + 3-verb-group conjugation + usage + ✗→✓ common mistake + 3 difficulty-tiered examples + 2-3 interactive exercises.
 - Disaster recovery: survived 2 container restarts via commit-after-every-batch discipline; all work pushed to GitHub.
+
+---
+Task ID: J3 (main session)
+Agent: main (Z.ai)
+Task: Connect the app to the user's real Neon Postgres DB + deep-research-driven upgrade to make learning Japanese fast (FSRS, comprehension dojo, mock tests, typing drills, XP/goal system, Vietnamese support).
+
+Work Log:
+- Connected to Neon (PostgreSQL 18.6, pooled endpoint): tested pg driver compat (sslmode=require; channel_binding param ignored by driver), wrote .env, verified latency (~3s round trip from this region).
+- Discovered deployed-generation schema on Neon (users with bcrypt+daily_goal, comprehension_passage with vi/questions JSON, vi_meaning/han_viet/example_vi columns, user_id-scoped progress, N2/N1 data) — richer features than repo but thinner content (1,259 vocab vs repo 2,360).
+- Unified schema: aligned src/db/schema.ts to Neon's exact column types (varchar lengths) → non-interactive drizzle-kit push (purely additive: +stability/difficulty on flashcard_progress, +comprehension_progress, +mock_test_result tables). Added safety unique indexes via raw SQL (stats.key, daily_activity.date, lesson_progress.lesson_id, due_at/item indexes).
+- Content merge (scripts/merge-neon.ts): kept Neon rows (vi data + ids preserved), enriched NULL fields from repo corpus, inserted repo-only entries. Final: 3,170 vocab (N5:1076/N4:998/N3:918/N2:158/N1:20), 134 grammar (renumbered per level), 646 kanji (recomputed sets of 10), 138 kana / 20 counters / 27 conjugations (replaced), 33 resources. Progress tables + users + passages untouched.
+- Deep research (2 web-search batches + FSRS wiki fetch): FSRS-5 beats SM-2 for 99.6% of users (SRS Benchmark); comprehensible input needs 95-98% coverage; output practice (testing effect) + input both required; Duolingo-style goal/streak/XP drives retention; JLPT format 3×60pts, pass 80/180 + 19/section.
+- Implemented FSRS-5 engine (src/lib/fsrs.ts) from the published spec: DSR model, forgetting curve (DECAY=-0.5, FACTOR=19/81), S0/D0 init, recall/forget stability, same-day short-term path, linear-damped difficulty with mean reversion, interval from desired retention, ±5% fuzz. 32 sanity tests pass (scripts/test-fsrs.ts), incl. spacing effect, saturation, overdue boost.
+- Wired FSRS into /api/flashcards (review action): stability/difficulty persisted, legacy box/ease/interval derived, XP awarding, retention param from client settings; GET returns per-card predicted recall R.
+- New: romaji→kana converter (src/lib/romaji.ts, IME rules: sokuon doubling, tch, ん/n'/nn, Hepburn m-before-b/p/m, 3-char syllables, digraphs, alt spellings) + matchesReading with particle orthography fallbacks (は→わ, へ→え, を→お). 50 tests pass.
+- New sections: Listening & Reading Dojo (/practice + /api/practice) — TTS playback w/ speed control + play count, reveal transcript, en/vi translations, instant-feedback MCQs w/ explanations, best-score tracking, XP; JLPT Mock Test (/mock-test + /api/mock-test) — generated 3-section timed exam (vocab variants: reading/meaning/reverse; grammar exercises from DB; reading passages; listening w/ TTS), per-section timers + auto-advance, question pills, JLPT scoring + pass rules, wrong-answer review, history, XP.
+- Quiz typing mode: vocabulary (type reading in romaji/kana) + kana (type romaji); XP +3/correct; vi hints shown.
+- Dashboard: daily-goal ring, XP/level curve, 7-day review forecast chart, predicted + true retention, 5-level path cards, new hero CTAs; app-shell nav + settings extended (Vietnamese toggle, daily goal 10/20/40/80, FSRS retention 85/90/95%).
+- Vietnamese support: vocab vi_meaning, kanji han_viet+vi_meaning, word-of-day vi, passage vi + questionVi — all behind showVietnamese setting (default on, localStorage v2 with v1 migration).
+- Level support N5→N1 everywhere: fixed N5-N3 whitelists in 6 API routes + flashcards level picker; LEVELS/badges/desc extended.
+- Browser-verified with agent-browser: dashboard (goal 4/20, Level 2, 116 XP, forecast), dojo (played audio, answered 3/3, score+XP), mock test (full 3-section run → 20/180 scored result + review), quiz typing (typed 'demo'→でも ✓, wrong answers correctly rejected e.g. bentou≠おべんとう, nana≠しち for 七), vocab N2 filter (158 words) + 60/60 cards show vi, kanji modal (Nhân — nhân dân), N2 grammar loads, lessons 25, FSRS grade buttons show live intervals (Good→3 days, Easy→15 days). Zero console/page errors; dev log clean.
+- tsc clean on app code; eslint clean (fixed one react-hooks hoisting error in mock-test).
+- Committed 20f297f and pushed to master. Wrote README.md.
+
+Stage Summary:
+- App now runs on the user's real Neon data with a unified, richer content corpus (3,170 vocab / 134 grammar / 646 kanji / 19 passages).
+- SRS upgraded SM-2→FSRS-5 (research-backed efficiency), plus XP/goal/streak habit loop.
+- 3 major new learning features: comprehension dojo, JLPT mock exams, typing drills; Vietnamese localization throughout.
+- Tooling: scripts/merge-neon.ts, test-fsrs.ts, test-romaji.ts, add-indexes.ts, inspect scripts.
+- Screenshots: /home/z/my-project/download/jp-dashboard.png, jp-practice-done.png, jp-mocktest-result.png, jp-lessons.png, jp-final-dashboard.png.
